@@ -675,23 +675,22 @@ function sendToSheetInBackground(payload) {
 
   const json = JSON.stringify(payload);
 
-  // sendBeacon gwarantuje wysłanie nawet gdy użytkownik zamknie kartę
-  if (navigator.sendBeacon) {
-    const blob = new Blob([json], { type: "text/plain" });
-    const sent = navigator.sendBeacon(WEBHOOK_URL, blob);
-    console.log(sent ? "✅ Beacon wysłany:" : "⚠️ Beacon odrzucony, próbuję fetch:", payload.question_id);
-    if (sent) return;
-  }
-
-  // Fallback: zwykły fetch jeśli sendBeacon niedostępny lub odrzucony
+  // Używamy fetch z no-cors — GAS nie zwraca CORS headerów, ale dane i tak docierają
+  // no-cors = nie możemy odczytać odpowiedzi, ale request jest wysyłany
   fetch(WEBHOOK_URL, {
     method: "POST",
     mode: "no-cors",
     headers: { "Content-Type": "text/plain" },
     body: json
   })
-    .then(() => console.log("✅ Fetch zapisany w tle:", payload.question_id))
-    .catch(err => console.warn("⚠️ Błąd zapisu w tle (dane są w TXT):", err));
+    .then(() => console.log("✅ Wysłano do GAS (no-cors):", payload.question_id))
+    .catch(err => console.warn("⚠️ Błąd wysyłania do GAS:", err));
+
+  // sendBeacon jako backup przy zamknięciu karty
+  window.addEventListener("beforeunload", () => {
+    const blob = new Blob([json], { type: "text/plain" });
+    navigator.sendBeacon?.(WEBHOOK_URL, blob);
+  }, { once: true });
 }
 
 // Zachowane dla przycisku "Spróbuj ponownie" — teraz nieużywane, ale zostawione dla bezpieczeństwa
