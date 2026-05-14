@@ -15,7 +15,7 @@ const GID = "0"; // ID arkusza (zakładki)
 
 // URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
 // Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbynZej7WsKA0mcRL0UyXlGq0mCJbPmvqIme1b2SrodutxQz23KdxyVXt7s3P5Lm4n2v/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxNpn4ty7CRFbw9PykygwU4loiaQFcjHgBdWgj-4_8LhiXk1O9bIkZza7cc2VyHP8gw/exec";
 
 // Klucz API do DeepSeek
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
@@ -758,9 +758,9 @@ function goNext() {
 async function generateThankYouMessage() {
   if (storedAnswers.length === 0) return;
 
-  // Zbuduj pełny kontekst ankiety
+  // Zbuduj kontekst ankiety
   const surveyContext = storedAnswers.map((a, idx) => {
-    const rating = a.answer === 'podoba mi się' ? '👍 Podoba' : 
+    const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
                    a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
     return `Q${idx + 1}: "${a.question_text}" → ${rating}${a.suggestion ? ` (komentarz: ${a.suggestion})` : ''}`;
   }).join('\n');
@@ -768,33 +768,27 @@ async function generateThankYouMessage() {
   const prompt = `Użytkownik (${userName}) właśnie wypełnił ankietę oceniającą moje rysunki humorystyczne. Oto jego odpowiedzi:\n\n${surveyContext}\n\nNa podstawie tych ocen i komentarzy: podziękuj mu serdecznie, pochwal jego wgląd w humor, scharakteryzuj jego styl oceniania, i daj mu ciepłą, osobistą wiadomość od Pawła. Bądź krótki (2-3 zdania), ale szczere i ze smakiem.`;
 
   try {
-    const response = await fetch(DEEPSEEK_API_URL, {
+    // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
+    const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 300
-      })
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'deepseek', prompt })
     });
 
     if (response.ok) {
       const data = await response.json();
-      const thankYouMessage = data.choices[0].message.content;
-      console.log('✅ DeepSeek response:\n' + thankYouMessage);
-      // Dodaj do wyświetlenia w ekranie końcowym
-      const thankYouEl = document.querySelector('.thanks-body');
-      if (thankYouEl) {
-        thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${thankYouMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+      if (data.message) {
+        console.log('✅ DeepSeek response:\n' + data.message);
+        const thankYouEl = document.querySelector('.thanks-body');
+        if (thankYouEl) {
+          thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${data.message}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+        }
       }
     } else {
-      console.warn('⚠️ DeepSeek API error:', response.status);
+      console.warn('⚠️ DeepSeek via GAS error:', response.status);
     }
   } catch (err) {
-    console.error('Error with DeepSeek:', err);
+    console.error('Błąd generowania wiadomości:', err);
   }
 }
 

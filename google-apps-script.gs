@@ -10,6 +10,10 @@
 const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
 const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa zakładki
 
+// ⬇️ Wklej tutaj swój klucz DeepSeek — jest bezpieczny, bo ten plik nie jest publiczny
+const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
+const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+
 // Odpowiada na GET - np. gdy wchodzisz na URL w przeglądarce
 function doGet(e) {
   return ContentService
@@ -24,10 +28,9 @@ function doOptions(e) {
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
-// Główna funkcja zapisująca odpowiedź do arkusza
+// Główna funkcja — obsługuje zapis do arkusza i wywołania DeepSeek
 function doPost(e) {
   try {
-    // Parsuj dane z requestu
     let body;
     if (e.postData && e.postData.contents) {
       body = JSON.parse(e.postData.contents);
@@ -35,7 +38,12 @@ function doPost(e) {
       body = e.parameter || {};
     }
 
-    // Otwórz arkusz
+    // Jeśli action=deepseek — wygeneruj wiadomość przez DeepSeek i zwróć ją
+    if (body.action === "deepseek") {
+      return handleDeepSeek(body.prompt);
+    }
+
+    // W przeciwnym razie — zapisz odpowiedź do arkusza
     const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
 
@@ -58,8 +66,8 @@ function doPost(e) {
     // Zapisz wiersz z odpowiedzią
     sheet.appendRow([
       new Date(),
-      body.timestamp  || "",
-      body.name       || "",
+      body.timestamp     || "",
+      body.name          || "",
       body.question_id   || "",
       body.question_text || "",
       body.image_a       || "",
@@ -69,13 +77,57 @@ function doPost(e) {
       body.suggestion    || ""
     ]);
 
-    // Zwróć sukces
     return ContentService
       .createTextOutput(JSON.stringify({ status: "ok" }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
     console.error("doPost error:", error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Wywołuje DeepSeek i zwraca wygenerowaną wiadomość
+function handleDeepSeek(prompt) {
+  try {
+    if (!prompt) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "error", message: "Brak promptu" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const response = UrlFetchApp.fetch(DEEPSEEK_API_URL, {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        "Authorization": "Bearer " + DEEPSEEK_API_KEY
+      },
+      payload: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 300
+      }),
+      muteHttpExceptions: true
+    });
+
+    const data = JSON.parse(response.getContentText());
+
+    if (data.choices && data.choices[0]) {
+      const message = data.choices[0].message.content;
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "ok", message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } else {
+      console.error("DeepSeek unexpected response:", JSON.stringify(data));
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "error", message: "Brak odpowiedzi od DeepSeek" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+  } catch (error) {
+    console.error("handleDeepSeek error:", error);
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
       .setMimeType(ContentService.MimeType.JSON);
