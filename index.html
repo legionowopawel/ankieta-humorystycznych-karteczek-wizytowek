@@ -13,6 +13,38 @@
 </head>
 
 <body>
+  <canvas id="dragonCanvas"></canvas>
+  <div id="cursorBar">
+    <span class="cbar-label">🖱️ Wskaźnik myszy</span>
+    <button class="cbar-btn active" data-cursor="none" id="btn-none">
+      <span class="cbar-icon">🖱️</span>
+      <span class="cbar-name">Normalna</span>
+    </button>
+    <button class="cbar-btn" data-cursor="dragon" id="btn-dragon">
+      <span class="cbar-icon">🐉</span>
+      <span class="cbar-name">Smok</span>
+    </button>
+    <button class="cbar-btn" data-cursor="snake" id="btn-snake">
+      <span class="cbar-icon">🐍</span>
+      <span class="cbar-name">Wąż</span>
+    </button>
+    <button class="cbar-btn" data-cursor="textcircle" id="btn-textcircle">
+      <span class="cbar-icon">💬</span>
+      <span class="cbar-name">Tekst</span>
+    </button>
+    <button class="cbar-btn" data-cursor="fairy" id="btn-fairy">
+      <span class="cbar-icon">✨</span>
+      <span class="cbar-name">Fairy Dust</span>
+    </button>
+    <button class="cbar-btn" data-cursor="clock" id="btn-clock">
+      <span class="cbar-icon">🕐</span>
+      <span class="cbar-name">Zegar</span>
+    </button>
+    <button class="cbar-btn" data-cursor="string" id="btn-string">
+      <span class="cbar-icon">🧵</span>
+      <span class="cbar-name">Gumka</span>
+    </button>
+  </div>
 
   <!-- EKRAN 1: Powitanie -->
   <div id="screen-1" class="screen active">
@@ -33,12 +65,6 @@
           <option value="kobieta">Kobieta</option>
           <option value="mężczyzna">Mężczyzna</option>
           <option value="inna">Inna</option>
-        </select>
-        <label class="input-label" for="cursor-select">Wskaźnik myszy</label>
-        <select id="cursor-select" class="cursor-select">
-          <option value="default">Zwykła mysz</option>
-          <option value="snake">Wężownica</option>
-          <option value="smoke">Smok</option>
         </select>
         <button class="btn-secondary" id="anonymous-btn">Ankieta anonimowa</button>
         <button class="btn-primary" id="start-btn">Zacznij →</button>

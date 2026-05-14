@@ -31,7 +31,7 @@ let userGender = ""; // nieobowiązkowe
 let isAnonymous = false;
 let startTime = null;
 let language = "pl"; // wykrywane automatycznie
-let cursorType = "default"; // default, snake, smoke
+let cursorType = "none"; // none, dragon, snake, textcircle, fairy, clock, string
 const storedAnswers = [];
 let pendingAnswer = null; // { answer, method, suggestion }
 
@@ -52,7 +52,8 @@ const genderSelect = document.getElementById("gender-select");
 const anonymousBtn = document.getElementById("anonymous-btn");
 const startBtn = document.getElementById("start-btn");
 const backBtn = document.getElementById("back-btn");
-const cursorSelect = document.getElementById("cursor-select");
+const cursorToolbar = document.getElementById("cursorBar");
+const cursorCanvas = document.getElementById("dragonCanvas");
 
 const progressFill = document.getElementById("progress-fill");
 const progressLabel = document.getElementById("progress-label");
@@ -93,15 +94,42 @@ anonymousBtn.addEventListener("click", () => {
   isAnonymous = true;
   userName = "Anonimowy";
   userGender = genderSelect.value || "";
-  cursorType = cursorSelect.value || "default";
   language = navigator.language.startsWith('pl') ? 'pl' : 'en';
-  document.body.style.cursor = getCursorStyle(cursorType);
+  setCursor(cursorType);
   startSurvey();
 });
-cursorSelect.addEventListener("change", () => {
-  cursorType = cursorSelect.value;
-  document.body.style.cursor = getCursorStyle(cursorType);
+
+cursorToolbar?.querySelectorAll(".cbar-btn").forEach(button => {
+  button.addEventListener("click", () => {
+    const type = button.dataset.cursor;
+    setCursor(type);
+  });
 });
+
+setCursor('none');
+
+function setCursor(type) {
+  cursorType = type || "none";
+  cursorToolbar?.querySelectorAll(".cbar-btn").forEach(button => {
+    button.classList.toggle("active", button.dataset.cursor === cursorType);
+  });
+
+  if (!cursorCanvas) {
+    document.body.style.cursor = cursorType === 'none' ? 'auto' : 'none';
+    return;
+  }
+
+  if (cursorType === 'none') {
+    stopCursorEffect();
+    document.body.style.cursor = 'auto';
+    cursorCanvas.style.display = 'none';
+    return;
+  }
+
+  document.body.style.cursor = 'none';
+  cursorCanvas.style.display = 'block';
+  startCursorEffect(cursorType);
+}
 
 async function handleStart() {
   const val = nameInput.value.trim();
@@ -113,18 +141,9 @@ async function handleStart() {
   nameError.textContent = "";
   userName = isAnonymous ? "Anonimowy" : val;
   userGender = genderSelect.value || "";
-  cursorType = cursorSelect.value || "default";
   language = navigator.language.startsWith('pl') ? 'pl' : 'en';
-  document.body.style.cursor = getCursorStyle(cursorType);
+  setCursor(cursorType);
   startSurvey();
-}
-
-function getCursorStyle(type) {
-  switch (type) {
-    case 'snake': return 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z\' fill=\'%23000\'/%3E%3C/svg%3E"), auto'; // Placeholder for snake
-    case 'smoke': return 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23ccc\'/%3E%3C/svg%3E"), auto'; // Placeholder for smoke
-    default: return 'default';
-  }
 }
 
 async function startSurvey() {
@@ -149,6 +168,172 @@ async function startSurvey() {
     startBtn.textContent = "Zacznij →";
     console.error(err);
   }
+}
+
+const cursorEffects = {
+  dragon: createCursorDragonEffect(),
+  snake: createCursorSnakeEffect(),
+  textcircle: createCursorTextEffect(),
+  fairy: createCursorFairyEffect(),
+  clock: createCursorClockEffect(),
+  string: createCursorStringEffect(),
+};
+let activeCursorEffect = null;
+let cursorPosition = { x: 0, y: 0 };
+let cursorAnimationFrame = null;
+
+function resizeCursorCanvas() {
+  if (!cursorCanvas) return;
+  cursorCanvas.width = window.innerWidth;
+  cursorCanvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeCursorCanvas);
+resizeCursorCanvas();
+
+function startCursorEffect(type) {
+  if (!cursorCanvas) return;
+  stopCursorEffect();
+  activeCursorEffect = cursorEffects[type] || null;
+  if (!activeCursorEffect) return;
+  cursorCanvas.style.display = 'block';
+  document.body.addEventListener('mousemove', onCursorMove);
+  document.body.addEventListener('mouseleave', onCursorLeave);
+
+  function frame() {
+    const ctx = cursorCanvas.getContext('2d');
+    ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+    if (activeCursorEffect) {
+      activeCursorEffect.draw(ctx, cursorPosition);
+    }
+    cursorAnimationFrame = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function stopCursorEffect() {
+  if (!cursorCanvas) return;
+  document.body.removeEventListener('mousemove', onCursorMove);
+  document.body.removeEventListener('mouseleave', onCursorLeave);
+  if (cursorAnimationFrame) {
+    cancelAnimationFrame(cursorAnimationFrame);
+    cursorAnimationFrame = null;
+  }
+  const ctx = cursorCanvas.getContext('2d');
+  ctx && ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+}
+
+function onCursorMove(event) {
+  cursorPosition = { x: event.clientX, y: event.clientY };
+}
+
+function onCursorLeave() {
+  cursorPosition = { x: -100, y: -100 };
+}
+
+function createCursorDragonEffect() {
+  return {
+    draw(ctx, pos) {
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.font = '32px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🐉', 0, 0);
+      ctx.restore();
+    }
+  };
+}
+
+function createCursorSnakeEffect() {
+  const trail = [];
+  return {
+    draw(ctx, pos) {
+      trail.unshift({ x: pos.x, y: pos.y });
+      if (trail.length > 12) trail.pop();
+      ctx.save();
+      trail.forEach((point, index) => {
+        const size = 12 - index * 0.6;
+        ctx.fillStyle = `rgba(38, 167, 72, ${1 - index / trail.length})`;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+  };
+}
+
+function createCursorTextEffect() {
+  return {
+    draw(ctx, pos) {
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.font = '30px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💬', 0, 0);
+      ctx.restore();
+    }
+  };
+}
+
+function createCursorFairyEffect() {
+  const particles = [];
+  return {
+    draw(ctx, pos) {
+      particles.push({ x: pos.x, y: pos.y, r: 8, life: 20 });
+      if (particles.length > 35) particles.shift();
+      ctx.save();
+      particles.forEach((p, index) => {
+        ctx.fillStyle = `rgba(255, 215, 0, ${p.life / 20})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (p.life / 20), 0, Math.PI * 2);
+        ctx.fill();
+        p.life -= 1;
+      });
+      ctx.restore();
+    }
+  };
+}
+
+function createCursorClockEffect() {
+  return {
+    draw(ctx, pos) {
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.fillStyle = '#1a1611';
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '16px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🕐', 0, 0);
+      ctx.restore();
+    }
+  };
+}
+
+function createCursorStringEffect() {
+  const trail = [];
+  return {
+    draw(ctx, pos) {
+      trail.unshift({ x: pos.x, y: pos.y });
+      if (trail.length > 18) trail.pop();
+      ctx.save();
+      ctx.strokeStyle = 'rgba(26, 22, 17, 0.45)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      trail.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
 }
 
 /* =============================================
