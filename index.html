@@ -173,6 +173,14 @@
   <script src="Efekty_html/fairy_dust.js"></script>
   <script src="Efekty_html/clock_follower.js"></script>
   <script src="Efekty_html/elastic_string.js"></script>
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <div class="lightbox-inner" onclick="event.stopPropagation()">
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+      <img id="lightbox-img" src="" alt="Podgląd obrazka" />
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 

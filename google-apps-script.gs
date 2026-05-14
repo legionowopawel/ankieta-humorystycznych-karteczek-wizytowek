@@ -14,11 +14,56 @@ const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa zakładki
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
-// Odpowiada na GET - np. gdy wchodzisz na URL w przeglądarce
+// Odpowiada na GET — zwraca ranking globalny gdy action=ranking, inaczej info
 function doGet(e) {
+  const action = e && e.parameter && e.parameter.action;
+
+  if (action === 'ranking') {
+    return getRanking();
+  }
+
   return ContentService
     .createTextOutput("Web App działa poprawnie. Wysyłaj dane przez POST.")
     .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// Pobierz wszystkie odpowiedzi z arkusza i zwróć jako JSON
+function getRanking() {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+
+    if (data.length <= 1) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: 'ok', answers: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Pierwsza linia to nagłówki — mapujemy kolumny
+    // Kolumny: Data zapisu, Timestamp, Imię, ID pytania, Pytanie, Obrazek A, Obrazek B, Odpowiedź, Metoda, Sugestia
+    const answers = data.slice(1).map(row => ({
+      timestamp:     row[1] || '',
+      name:          row[2] || '',
+      question_id:   row[3] || '',
+      question_text: row[4] || '',
+      image_a:       row[5] || '',
+      image_b:       row[6] || '',
+      answer:        row[7] || '',
+      answer_method: row[8] || '',
+      suggestion:    row[9] || ''
+    })).filter(r => r.image_b); // tylko wiersze z obrazkiem B
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok', answers }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    console.error('getRanking error:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // Obsługuje preflight CORS (OPTIONS) - niektóre przeglądarki to wysyłają przed POST

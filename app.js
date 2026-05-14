@@ -15,7 +15,7 @@ const GID = "0"; // ID arkusza (zakładki)
 
 // URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
 // Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxNpn4ty7CRFbw9PykygwU4loiaQFcjHgBdWgj-4_8LhiXk1O9bIkZza7cc2VyHP8gw/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyO01bQpLyVuv7jNPP_0zG8XfaBP-hA9q4GS7bTshCKAW9pIjSEntwIvHaEynvxpAPW/exec";
 
 // Klucz API do DeepSeek
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
@@ -741,8 +741,9 @@ function saveProgress() {
   setTimeout(() => {
     downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wyniki'}.txt`);
     generateThankYouMessage().then(() => {
-      showResultsTable();
-      showScreen(5);
+      showGlobalRanking().then(() => {
+        showScreen(5);
+      });
     });
   }, 1000);
 }
@@ -754,8 +755,9 @@ function goNext() {
     showScreen(2);
   } else {
     generateThankYouMessage().then(() => {
-      showResultsTable();
-      showScreen(5);
+      showGlobalRanking().then(() => {
+        showScreen(5);
+      });
     });
   }
 }
@@ -766,7 +768,7 @@ async function generateThankYouMessage() {
   // Zbuduj kontekst ankiety
   const surveyContext = storedAnswers.map((a, idx) => {
     const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
-                   a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
+      a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
     return `Q${idx + 1}: "${a.question_text}" → ${rating}${a.suggestion ? ` (komentarz: ${a.suggestion})` : ''}`;
   }).join('\n');
 
@@ -839,86 +841,122 @@ function normalizeAnswerLabel(answer) {
   return answer || 'Brak odpowiedzi';
 }
 
-function showResultsTable() {
+// Pobierz globalny ranking z Google Sheets i wyświetl
+async function showGlobalRanking() {
   if (!resultsContainer) return;
+  resultsContainer.innerHTML = '<p class="results-empty">Ładuję globalny ranking...</p>';
 
-  if (storedAnswers.length === 0) {
-    resultsContainer.innerHTML = '<p class="results-empty">Brak danych do wyświetlenia.</p>';
-    return;
+  let allAnswers = [];
+
+  try {
+    const res = await fetch(WEBHOOK_URL + '?action=ranking', { method: 'GET' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'ok' && Array.isArray(data.answers)) {
+        allAnswers = data.answers;
+        console.log('✅ Pobrano', allAnswers.length, 'głosów z arkusza');
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Nie udało się pobrać globalnych wyników, pokazuję lokalne:', err.message);
   }
 
+  // Fallback: jeśli GAS nie odpowiedział — użyj lokalnych danych
+  if (allAnswers.length === 0) {
+    console.warn('Brak danych z serwera, używam lokalnych odpowiedzi');
+    allAnswers = storedAnswers;
+  }
+
+  renderRanking(allAnswers);
+}
+
+function renderRanking(answers) {
   const grouped = new Map();
 
-  storedAnswers.forEach(item => {
+  answers.forEach(item => {
     const key = item.image_b || item.question_id || item.question_text;
+    if (!key) return;
     if (!grouped.has(key)) {
       grouped.set(key, {
         image_b: item.image_b,
         question_text: item.question_text,
-        total: 0,
-        yes: 0,
-        no: 0,
-        strongNo: 0
+        total: 0, yes: 0, no: 0, strongNo: 0
       });
     }
     const row = grouped.get(key);
     row.total += 1;
-    if (item.answer === 'podoba mi się') {
-      row.yes += 1;
-    } else if (item.answer === 'nie podoba mi się') {
-      row.no += 1;
-    } else if (item.answer === 'zdecydowanie mi się nie podoba') {
-      row.strongNo += 1;
-    }
+    const ans = (item.answer || item.odpowiedz || '').toLowerCase();
+    if (ans === 'podoba mi się') row.yes += 1;
+    else if (ans === 'nie podoba mi się') row.no += 1;
+    else if (ans === 'zdecydowanie mi się nie podoba') row.strongNo += 1;
   });
 
   const results = Array.from(grouped.values()).map(row => {
     const positiveRate = row.total ? (row.yes / row.total) * 100 : 0;
-    const answerLabel = row.yes >= row.no + row.strongNo
-      ? 'Podoba się'
-      : row.no >= row.strongNo
-        ? 'Nie podoba się'
-        : 'Zdecydowanie nie';
-
-    return {
-      ...row,
-      positiveRate,
-      answerLabel,
-      subtitle: `${normalizeAnswerLabel(row.yes >= row.no + row.strongNo ? 'podoba mi się' : row.no >= row.strongNo ? 'nie podoba mi się' : 'zdecydowanie mi się nie podoba')}`
-    };
+    const answerLabel = row.yes >= row.no + row.strongNo ? 'Podoba się'
+      : row.no >= row.strongNo ? 'Nie podoba się' : 'Zdecydowanie nie';
+    return { ...row, positiveRate, answerLabel };
   });
 
   results.sort((a, b) => b.positiveRate - a.positiveRate);
 
+  if (results.length === 0) {
+    resultsContainer.innerHTML = '<p class="results-empty">Brak danych do wyświetlenia.</p>';
+    return;
+  }
+
+  const bust = window._imageCacheBust || Date.now();
   const rowsHtml = results.map((item, index) => {
     const nextRate = index + 1 < results.length ? results[index + 1].positiveRate : 0;
     const advantage = index === 0 && results.length > 1
-      ? `${Math.max(0, (item.positiveRate - nextRate)).toFixed(0)} pkt przewagi`
-      : '';
-
+      ? ` · ${Math.max(0, item.positiveRate - nextRate).toFixed(0)} pkt przewagi` : '';
     return `
-      <div class="result-row${index === 0 ? ' result-top' : ''}">
+      <div class="result-row${index === 0 ? ' result-top' : ''}"
+           onclick="openLightbox('${item.image_b}')" style="cursor:pointer" title="Kliknij aby zobaczyć obrazek">
         <div class="result-rank">${index + 1}</div>
         <div class="result-thumb">
-          <img src="images/${item.image_b}.jpg" alt="Miniatura" onerror="this.onerror=null;this.src='images/${item.image_b}.png'" />
+          <img src="images/${item.image_b}.png?v=${bust}" alt="Miniatura"
+               onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />
         </div>
         <div class="result-info">
           <div class="result-title">${item.question_text || item.image_b}</div>
           <div class="result-answer">${item.answerLabel}</div>
-          <div class="result-stats">Tak: ${item.positiveRate.toFixed(0)}% ${advantage ? `· ${advantage}` : ''}</div>
-          <div class="result-count">Liczba głosów: ${item.total}</div>
+          <div class="result-stats">👍 ${item.positiveRate.toFixed(0)}%${advantage}</div>
+          <div class="result-count">Głosów: ${item.total}</div>
         </div>
-      </div>
-    `;
+        <div class="result-zoom">🔍</div>
+      </div>`;
   }).join('');
 
   resultsContainer.innerHTML = `
     <div class="results-header">
-      <div>Ranking odpowiedzi</div>
-      <div>Procent „tak”</div>
+      <div>🌍 Ranking globalny</div>
+      <div>% „tak"</div>
     </div>
     <div class="results-list">${rowsHtml}</div>
   `;
+}
+
+// Lightbox — pełnoekranowy podgląd obrazka
+function openLightbox(imageName) {
+  if (!imageName) return;
+  const bust = window._imageCacheBust || Date.now();
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  lbImg.src = `images/${imageName}.png?v=${bust}`;
+  lbImg.onerror = () => { lbImg.src = `images/${imageName}.jpg?v=${bust}`; lbImg.onerror = null; };
+  lb.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Zachowane dla kompatybilności
+function showResultsTable() {
+  renderRanking(storedAnswers);
 }
 
 function downloadTxtFile(filename) {
