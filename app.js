@@ -721,11 +721,18 @@ function saveProgress() {
     return;
   }
 
-  downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'postep'}.txt`);
-  generateThankYouMessage().then(() => {
-    showResultsTable();
-    showScreen(5);
-  });
+  // Pokaż ekran ładowania z komunikatem o zapisie wyników
+  showScreen(4);
+  document.querySelector('.loading-text').textContent = 'Zapisuję wyniki...';
+
+  // Symuluj krótkie opóźnienie dla UX
+  setTimeout(() => {
+    downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wyniki'}.txt`);
+    generateThankYouMessage().then(() => {
+      showResultsTable();
+      showScreen(5);
+    });
+  }, 1000);
 }
 
 function goNext() {
