@@ -17,14 +17,23 @@ const GID = "0"; // ID arkusza (zakładki)
 // Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
 const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxlrqtndJzBuT02e486owj26kh-Ktzdq2XnyMRVG1ujLUMLmvRJQ2VabOWJ8O1Wpck7/exec";
 
+// Klucz API do DeepSeek
+const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
+const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"; // Zakładam standardowy endpoint
+
 /* =============================================
    STAN APLIKACJI
 ============================================= */
 let questions = [];
 let currentIndex = 0;
 let userName = "";
+let userGender = ""; // nieobowiązkowe
+let isAnonymous = false;
+let startTime = null;
+let language = "pl"; // wykrywane automatycznie
+let cursorType = "default"; // default, snake, smoke
+const storedAnswers = [];
 let pendingAnswer = null; // { answer, method, suggestion }
-let storedAnswers = [];
 
 /* =============================================
    ELEMENTY DOM
@@ -39,7 +48,11 @@ const screens = {
 
 const nameInput = document.getElementById("name-input");
 const nameError = document.getElementById("name-error");
+const genderSelect = document.getElementById("gender-select");
+const anonymousBtn = document.getElementById("anonymous-btn");
 const startBtn = document.getElementById("start-btn");
+const backBtn = document.getElementById("back-btn");
+const cursorSelect = document.getElementById("cursor-select");
 
 const progressFill = document.getElementById("progress-fill");
 const progressLabel = document.getElementById("progress-label");
@@ -76,16 +89,46 @@ function showScreen(n) {
 ============================================= */
 startBtn.addEventListener("click", handleStart);
 nameInput.addEventListener("keydown", e => { if (e.key === "Enter") handleStart(); });
+anonymousBtn.addEventListener("click", () => {
+  isAnonymous = true;
+  userName = "Anonimowy";
+  userGender = genderSelect.value || "";
+  cursorType = cursorSelect.value || "default";
+  language = navigator.language.startsWith('pl') ? 'pl' : 'en';
+  document.body.style.cursor = getCursorStyle(cursorType);
+  startSurvey();
+});
+cursorSelect.addEventListener("change", () => {
+  cursorType = cursorSelect.value;
+  document.body.style.cursor = getCursorStyle(cursorType);
+});
 
 async function handleStart() {
   const val = nameInput.value.trim();
-  if (val.length < 2) {
+  if (!isAnonymous && val.length < 2) {
     nameError.textContent = "Podaj imię lub pseudonim (min. 2 znaki).";
     nameInput.focus();
     return;
   }
   nameError.textContent = "";
-  userName = val;
+  userName = isAnonymous ? "Anonimowy" : val;
+  userGender = genderSelect.value || "";
+  cursorType = cursorSelect.value || "default";
+  language = navigator.language.startsWith('pl') ? 'pl' : 'en';
+  document.body.style.cursor = getCursorStyle(cursorType);
+  startSurvey();
+}
+
+function getCursorStyle(type) {
+  switch (type) {
+    case 'snake': return 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z\' fill=\'%23000\'/%3E%3C/svg%3E"), auto'; // Placeholder for snake
+    case 'smoke': return 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23ccc\'/%3E%3C/svg%3E"), auto'; // Placeholder for smoke
+    default: return 'default';
+  }
+}
+
+async function startSurvey() {
+  startTime = Date.now();
   startBtn.disabled = true;
   startBtn.textContent = "Ładuję pytania...";
 
@@ -279,6 +322,15 @@ screens[2].addEventListener("click", () => {
   showScreen(3);
 });
 
+backBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // Prevent triggering screen click
+  showScreen(1);
+});
+
+document.getElementById("back-btn-3").addEventListener("click", () => {
+  showScreen(2);
+});
+
 /* =============================================
    EKRAN 3 — przyciski
 ============================================= */
@@ -379,16 +431,26 @@ function triggerSave(answer, method, suggestion) {
 
 async function submitAnswer() {
   const q = questions[currentIndex];
+  const timeSpent = startTime ? (Date.now() - startTime) / 1000 : 0; // sekundy
+  const averageRating = calculateAverageRating();
+
   const payload = {
     timestamp: new Date().toISOString(),
     name: userName,
+    gender: userGender,
+    is_anonymous: isAnonymous,
+    language: language,
+    cursor_type: cursorType,
+    time_spent_seconds: timeSpent,
+    average_rating: averageRating,
     question_id: q.id,
     question_text: q.pytanie,
     image_a: q.obrazek_a,
     image_b: q.obrazek_b,
     answer: pendingAnswer.answer,
     answer_method: pendingAnswer.method,
-    suggestion: pendingAnswer.suggestion || ""
+    suggestion: pendingAnswer.suggestion || "",
+    deepseek_thank_you: "" // Placeholder for generated message
   };
 
   // Jeśli WEBHOOK_URL nie jest skonfigurowany, przejdź dalej bez zapisu
@@ -418,6 +480,17 @@ async function submitAnswer() {
   }
 }
 
+function calculateAverageRating() {
+  if (storedAnswers.length === 0) return 0;
+  const ratings = storedAnswers.map(a => {
+    if (a.answer === 'podoba mi się') return 3;
+    if (a.answer === 'nie podoba mi się') return 2;
+    if (a.answer === 'zdecydowanie mi się nie podoba') return 1;
+    return 0;
+  });
+  return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+}
+
 retryBtn.addEventListener("click", () => {
   retryBtn.classList.add("hidden");
   errorMsg.classList.add("hidden");
@@ -434,8 +507,47 @@ function goNext() {
     showQuestion(currentIndex);
     showScreen(2);
   } else {
-    showResultsTable();
-    showScreen(5);
+    generateThankYouMessage().then(() => {
+      showResultsTable();
+      showScreen(5);
+    });
+  }
+}
+
+async function generateThankYouMessage() {
+  const suggestions = storedAnswers.map(a => a.suggestion).filter(s => s.trim()).join(' ');
+  if (!suggestions.trim()) {
+    // Brak komentarzy, proste podziękowanie
+    return;
+  }
+
+  const prompt = `Ktoś napisał mi komentarze do moich rysunków: "${suggestions}". Na podstawie tych odpowiedzi podziękuj serdecznie za wypowiedzi, pochwal styl, nazwij jej lub jego styl humorystyczny, mów po imieniu (${userName}). Pozdrów w imieniu Pawła i podziękuj za ankietę.`;
+
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat', // Zakładam model
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const thankYouMessage = data.choices[0].message.content;
+      // Zapisz do payload lub wyświetl
+      console.log('Generated thank you:', thankYouMessage);
+      // Można dodać do wyników lub wyświetlić osobno
+    } else {
+      console.warn('DeepSeek API failed, using simple message');
+    }
+  } catch (err) {
+    console.error('Error with DeepSeek:', err);
   }
 }
 

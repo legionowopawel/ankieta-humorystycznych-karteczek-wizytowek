@@ -27,6 +27,20 @@
         <input type="text" id="name-input" class="name-input" placeholder="np. Ania, Kamil123..." maxlength="50"
           autocomplete="off" />
         <p class="input-hint" id="name-error" aria-live="polite"></p>
+        <label class="input-label" for="gender-select">Płeć (opcjonalne)</label>
+        <select id="gender-select" class="gender-select">
+          <option value="">Nie podaję</option>
+          <option value="kobieta">Kobieta</option>
+          <option value="mężczyzna">Mężczyzna</option>
+          <option value="inna">Inna</option>
+        </select>
+        <label class="input-label" for="cursor-select">Wskaźnik myszy</label>
+        <select id="cursor-select" class="cursor-select">
+          <option value="default">Zwykła mysz</option>
+          <option value="snake">Wężownica</option>
+          <option value="smoke">Smok</option>
+        </select>
+        <button class="btn-secondary" id="anonymous-btn">Ankieta anonimowa</button>
         <button class="btn-primary" id="start-btn">Zacznij →</button>
       </div>
       <p class="footer-note">Paweł · 2024</p>
@@ -42,6 +56,7 @@
         </div>
         <span class="progress-label" id="progress-label">Pytanie 1 z ?</span>
       </div>
+      <button class="btn-back" id="back-btn">← Wstecz</button>
       <div class="question-text" id="question-text-a"></div>
       <div class="image-wrap" id="image-wrap-a">
         <img id="image-a" src="" alt="Obrazek A" />
@@ -63,6 +78,7 @@
         </div>
         <span class="progress-label" id="progress-label-3">Pytanie 1 z ?</span>
       </div>
+      <button class="btn-back" id="back-btn-3">← Wstecz</button>
       <div class="image-wrap swipeable" id="image-wrap-b">
         <img id="image-b" src="" alt="Obrazek B" />
         <div class="image-badge badge-b">B</div>
