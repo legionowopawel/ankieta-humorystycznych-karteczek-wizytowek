@@ -505,10 +505,11 @@ function showQuestion(index) {
   document.getElementById("swipe-left-hint").style.opacity = "0";
 }
 
-// Próbuje png, jpg, jpeg, webp
+// Próbuje png, jpg, jpeg, webp — z cache-bustingiem żeby zawsze ładować świeże pliki
 function loadImage(imgEl, name) {
   if (!name) { imgEl.src = ""; return; }
   const exts = ["png", "jpg", "jpeg", "webp"];
+  const bust = "?v=" + (window._imageCacheBust || (window._imageCacheBust = Date.now()));
   let tried = 0;
 
   function tryNext() {
@@ -517,7 +518,7 @@ function loadImage(imgEl, name) {
       imgEl.alt = "Brak obrazka";
       return;
     }
-    imgEl.src = `images/${name}.${exts[tried]}`;
+    imgEl.src = `images/${name}.${exts[tried]}${bust}`;
     tried++;
   }
 
@@ -632,9 +633,10 @@ function animateSwipeOut(direction, callback) {
    ZAPIS ODPOWIEDZI
 ============================================= */
 function triggerSave(answer, method, suggestion) {
-  pendingAnswer = { answer, method, suggestion };
-
+  // Snapshot pytania PRZED goNext() — po goNext() currentIndex już się zmieni
   const q = questions[currentIndex];
+  if (!q) { console.warn("triggerSave: brak pytania dla currentIndex", currentIndex); return; }
+
   const timeSpent = startTime ? (Date.now() - startTime) / 1000 : 0;
   const averageRating = calculateAverageRating();
 
@@ -651,9 +653,9 @@ function triggerSave(answer, method, suggestion) {
     question_text: q.pytanie,
     image_a: q.obrazek_a,
     image_b: q.obrazek_b,
-    answer: pendingAnswer.answer,
-    answer_method: pendingAnswer.method,
-    suggestion: pendingAnswer.suggestion || "",
+    answer: answer,
+    answer_method: method,
+    suggestion: suggestion || "",
     deepseek_thank_you: ""
   };
 
@@ -769,10 +771,12 @@ async function generateThankYouMessage() {
 
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
+    // Uwaga: GAS wymaga wdrożenia z "Kto ma dostęp: Każdy" żeby CORS działał
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'deepseek', prompt })
+      body: JSON.stringify({ action: 'deepseek', prompt }),
+      redirect: 'follow'
     });
 
     if (response.ok) {
@@ -788,7 +792,8 @@ async function generateThankYouMessage() {
       console.warn('⚠️ DeepSeek via GAS error:', response.status);
     }
   } catch (err) {
-    console.error('Błąd generowania wiadomości:', err);
+    // DeepSeek jest opcjonalny — błąd nie blokuje wyświetlenia wyników
+    console.warn('⚠️ Nie udało się wygenerować wiadomości DeepSeek (sprawdź wdrożenie GAS):', err.message);
   }
 }
 
