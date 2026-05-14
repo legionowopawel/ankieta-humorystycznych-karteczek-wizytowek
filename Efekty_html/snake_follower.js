@@ -94,3 +94,7 @@ window.EfektSnakeFollower = (function () {
     if (touchMoveHandler) document.removeEventListener('touchmove', touchMoveHandler, { passive: true });
     mouseMoveHandler = null;
     touchMoveHandler = null;
+  }
+
+  return { init, destroy };
+})();
