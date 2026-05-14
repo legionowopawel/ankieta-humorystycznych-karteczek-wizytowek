@@ -684,7 +684,7 @@ async function submitAnswer() {
     goNext();
   } catch (err) {
     console.error("Błąd zapisu:", err);
-    errorMsg.textContent = "Nie udało się zapisać odpowiedzi. Sprawdź połączenie i spróbuj ponownie.";
+    errorMsg.textContent = "Nie udało się zapisać postępu. Sprawdź połączenie i spróbuj ponownie.";
     errorMsg.classList.remove("hidden");
     retryBtn.classList.remove("hidden");
   }
