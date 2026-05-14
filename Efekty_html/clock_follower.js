@@ -10,6 +10,7 @@
 window.EfektClockFollower = (function () {
   let canvas, ctx, animId;
   let mouseX, mouseY;
+  let mouseMoveHandler, touchMoveHandler;
   let running = false;
   let orbitAngle = 0;
 
@@ -26,10 +27,10 @@ window.EfektClockFollower = (function () {
     mouseX = window.innerWidth / 2;
     mouseY = window.innerHeight / 2;
 
-    function onMouseMove(e) { mouseX = e.clientX; mouseY = e.clientY; }
-    function onTouchMove(e) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    mouseMoveHandler = function onMouseMove(e) { mouseX = e.clientX; mouseY = e.clientY; };
+    touchMoveHandler = function onTouchMove(e) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; };
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('touchmove', touchMoveHandler, { passive: true });
 
     function getNow() {
       const now = new Date();
@@ -139,6 +140,10 @@ window.EfektClockFollower = (function () {
     running = false;
     if (animId) cancelAnimationFrame(animId);
     if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (mouseMoveHandler) document.removeEventListener('mousemove', mouseMoveHandler);
+    if (touchMoveHandler) document.removeEventListener('touchmove', touchMoveHandler, { passive: true });
+    mouseMoveHandler = null;
+    touchMoveHandler = null;
   }
 
   return { init, destroy };

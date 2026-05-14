@@ -10,6 +10,7 @@
 window.EfektSnakeFollower = (function () {
   let canvas, ctx, animId;
   let mouseX, mouseY;
+  let mouseMoveHandler, touchMoveHandler;
   let running = false;
   const COUNT = 24;
   const SPACING = 14;
@@ -89,7 +90,7 @@ window.EfektSnakeFollower = (function () {
     running = false;
     if (animId) cancelAnimationFrame(animId);
     if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  return { init, destroy };
-})();
+    if (mouseMoveHandler) document.removeEventListener('mousemove', mouseMoveHandler);
+    if (touchMoveHandler) document.removeEventListener('touchmove', touchMoveHandler, { passive: true });
+    mouseMoveHandler = null;
+    touchMoveHandler = null;

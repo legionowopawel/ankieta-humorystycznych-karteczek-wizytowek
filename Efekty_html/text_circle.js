@@ -10,6 +10,7 @@
 window.EfektTextCircle = (function () {
   let canvas, ctx, animId;
   let mouseX, mouseY;
+  let mouseMoveHandler, touchMoveHandler;
   let running = false;
   let angle = 0;
 
@@ -30,8 +31,10 @@ window.EfektTextCircle = (function () {
 
     function onMouseMove(e) { mouseX = e.clientX; mouseY = e.clientY; }
     function onTouchMove(e) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    mouseMoveHandler = onMouseMove;
+    touchMoveHandler = onTouchMove;
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('touchmove', touchMoveHandler, { passive: true });
 
     const chars = text.split('');
     const angleStep = (Math.PI * 2) / chars.length;

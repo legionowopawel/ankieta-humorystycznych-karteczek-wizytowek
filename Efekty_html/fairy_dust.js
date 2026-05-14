@@ -10,6 +10,7 @@
 window.EfektFairyDust = (function () {
   let canvas, ctx, animId;
   let mouseX, mouseY;
+  let mouseMoveHandler, touchMoveHandler;
   let running = false;
   let particles = [];
   let lastX, lastY;
@@ -29,7 +30,7 @@ window.EfektFairyDust = (function () {
     lastX = mouseX; lastY = mouseY;
     particles = [];
 
-    function onMouseMove(e) {
+    mouseMoveHandler = function onMouseMove(e) {
       lastX = mouseX; lastY = mouseY;
       mouseX = e.clientX; mouseY = e.clientY;
       // Spawn cząstki przy ruchu myszy
@@ -39,15 +40,15 @@ window.EfektFairyDust = (function () {
       for (let i = 0; i < count; i++) {
         spawnParticle(mouseX, mouseY, colors);
       }
-    }
+    };
 
-    function onTouchMove(e) {
+    touchMoveHandler = function onTouchMove(e) {
       mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY;
       for (let i = 0; i < spawnRate; i++) spawnParticle(mouseX, mouseY, colors);
-    }
+    };
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('touchmove', touchMoveHandler, { passive: true });
 
     function loop() {
       if (!running) return;
@@ -132,6 +133,10 @@ window.EfektFairyDust = (function () {
     running = false;
     if (animId) cancelAnimationFrame(animId);
     if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (mouseMoveHandler) document.removeEventListener('mousemove', mouseMoveHandler);
+    if (touchMoveHandler) document.removeEventListener('touchmove', touchMoveHandler, { passive: true });
+    mouseMoveHandler = null;
+    touchMoveHandler = null;
     particles = [];
   }
 

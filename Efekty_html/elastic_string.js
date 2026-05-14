@@ -11,6 +11,7 @@
 window.EfektElasticString = (function () {
   let canvas, ctx, animId;
   let mouseX, mouseY;
+  let mouseMoveHandler, touchMoveHandler;
   let running = false;
 
   // Punkty siatki gumek
@@ -44,10 +45,10 @@ window.EfektElasticString = (function () {
       });
     }
 
-    function onMouseMove(e) { mouseX = e.clientX; mouseY = e.clientY; }
-    function onTouchMove(e) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    mouseMoveHandler = function onMouseMove(e) { mouseX = e.clientX; mouseY = e.clientY; };
+    touchMoveHandler = function onTouchMove(e) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; };
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('touchmove', touchMoveHandler, { passive: true });
 
     function loop() {
       if (!running) return;
@@ -127,16 +128,16 @@ window.EfektElasticString = (function () {
       h = (h + degrees / 360) % 1;
       function hue2rgb(p, q, t) {
         if (t < 0) t += 1; if (t > 1) t -= 1;
-        if (t < 1/6) return p + (q - p) * 6 * t;
-        if (t < 1/2) return q;
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
         return p;
       }
       const q2 = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p2 = 2 * l - q2;
-      const nr = Math.round(hue2rgb(p2, q2, h + 1/3) * 255);
+      const nr = Math.round(hue2rgb(p2, q2, h + 1 / 3) * 255);
       const ng = Math.round(hue2rgb(p2, q2, h) * 255);
-      const nb = Math.round(hue2rgb(p2, q2, h - 1/3) * 255);
+      const nb = Math.round(hue2rgb(p2, q2, h - 1 / 3) * 255);
       return `rgb(${nr},${ng},${nb})`;
     } catch (e) { return hex; }
   }
@@ -145,6 +146,10 @@ window.EfektElasticString = (function () {
     running = false;
     if (animId) cancelAnimationFrame(animId);
     if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (mouseMoveHandler) document.removeEventListener('mousemove', mouseMoveHandler);
+    if (touchMoveHandler) document.removeEventListener('touchmove', touchMoveHandler, { passive: true });
+    mouseMoveHandler = null;
+    touchMoveHandler = null;
     anchors = [];
   }
 

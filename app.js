@@ -78,6 +78,7 @@ const charCount = document.getElementById("char-count");
 const retryBtn = document.getElementById("retry-btn");
 const errorMsg = document.getElementById("error-msg");
 const downloadBtn = document.getElementById("download-btn");
+const saveProgressBtn = document.getElementById("save-progress-btn");
 const resultsContainer = document.getElementById("results-container");
 
 /* =============================================
@@ -297,13 +298,19 @@ function startCursorEffect(type) {
   activeCursorEffect = cursorEffects[type] || null;
   if (!activeCursorEffect) return;
   cursorCanvas.style.display = 'block';
+
+  if (typeof activeCursorEffect.init === 'function') {
+    activeCursorEffect.init();
+    return;
+  }
+
   document.body.addEventListener('mousemove', onCursorMove);
   document.body.addEventListener('mouseleave', onCursorLeave);
 
   function frame() {
     const ctx = cursorCanvas.getContext('2d');
     ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
-    if (activeCursorEffect) {
+    if (activeCursorEffect && typeof activeCursorEffect.draw === 'function') {
       activeCursorEffect.draw(ctx, cursorPosition);
     }
     cursorAnimationFrame = requestAnimationFrame(frame);
@@ -313,11 +320,16 @@ function startCursorEffect(type) {
 
 function stopCursorEffect() {
   if (!cursorCanvas) return;
-  document.body.removeEventListener('mousemove', onCursorMove);
-  document.body.removeEventListener('mouseleave', onCursorLeave);
-  if (cursorAnimationFrame) {
-    cancelAnimationFrame(cursorAnimationFrame);
-    cursorAnimationFrame = null;
+  if (activeCursorEffect?.destroy) {
+    activeCursorEffect.destroy();
+  }
+  if (activeCursorEffect && typeof activeCursorEffect.draw === 'function') {
+    document.body.removeEventListener('mousemove', onCursorMove);
+    document.body.removeEventListener('mouseleave', onCursorLeave);
+    if (cursorAnimationFrame) {
+      cancelAnimationFrame(cursorAnimationFrame);
+      cursorAnimationFrame = null;
+    }
   }
   const ctx = cursorCanvas.getContext('2d');
   ctx && ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
@@ -331,14 +343,22 @@ function onCursorLeave() {
   cursorPosition = { x: -100, y: -100 };
 }
 
+function createExternalCursorEffect(module) {
+  if (!module || typeof module.init !== 'function' || typeof module.destroy !== 'function') return null;
+  return {
+    init: () => module.init(),
+    destroy: () => module.destroy()
+  };
+}
+
 // Teraz definiujemy cursorEffects po wszystkich funkcjach create*
 cursorEffects = {
-  dragon: createCursorDragonEffect(),
-  snake: createCursorSnakeEffect(),
-  textcircle: createCursorTextEffect(),
-  fairy: createCursorFairyEffect(),
-  clock: createCursorClockEffect(),
-  string: createCursorStringEffect(),
+  dragon: createExternalCursorEffect(window.EfektElasticDragon) || createCursorDragonEffect(),
+  snake: createExternalCursorEffect(window.EfektSnakeFollower) || createCursorSnakeEffect(),
+  textcircle: createExternalCursorEffect(window.EfektTextCircle) || createCursorTextEffect(),
+  fairy: createExternalCursorEffect(window.EfektFairyDust) || createCursorFairyEffect(),
+  clock: createExternalCursorEffect(window.EfektClockFollower) || createCursorClockEffect(),
+  string: createExternalCursorEffect(window.EfektElasticString) || createCursorStringEffect(),
 };
 
 /* =============================================
@@ -691,6 +711,23 @@ downloadBtn?.addEventListener("click", () => {
   downloadTxtFile();
 });
 
+saveProgressBtn?.addEventListener("click", () => {
+  saveProgress();
+});
+
+function saveProgress() {
+  if (storedAnswers.length === 0) {
+    alert("Nie ma jeszcze zapisanych odpowiedzi do zapisania. Odpowiedz na przynajmniej jedno pytanie.");
+    return;
+  }
+
+  downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'postep'}.txt`);
+  generateThankYouMessage().then(() => {
+    showResultsTable();
+    showScreen(5);
+  });
+}
+
 function goNext() {
   currentIndex++;
   if (currentIndex < questions.length) {
@@ -859,14 +896,14 @@ function showResultsTable() {
   `;
 }
 
-function downloadTxtFile() {
+function downloadTxtFile(filename) {
   const text = buildDownloadText();
-  const filename = `ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wynik'}.txt`;
+  const name = filename || `ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wynik'}.txt`;
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename;
+  link.download = name;
   document.body.appendChild(link);
   link.click();
   link.remove();
