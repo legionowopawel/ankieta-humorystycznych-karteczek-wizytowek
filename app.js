@@ -21,6 +21,11 @@ const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxNpn4ty7CRFbw9Pyky
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"; // Zakładam standardowy endpoint
 
+console.log('🔧 App initialized:');
+console.log('  WEBHOOK_URL:', WEBHOOK_URL);
+console.log('  DEEPSEEK_API_KEY:', DEEPSEEK_API_KEY !== "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK" ? '✅ Wpisany' : '⚠️ Nie ustawiony');
+console.log('  QUESTIONS_SHEET_ID:', QUESTIONS_SHEET_ID);
+
 /* =============================================
    STAN APLIKACJI
 ============================================= */
@@ -628,15 +633,9 @@ function animateSwipeOut(direction, callback) {
 ============================================= */
 function triggerSave(answer, method, suggestion) {
   pendingAnswer = { answer, method, suggestion };
-  showScreen(4);
-  retryBtn.classList.add("hidden");
-  errorMsg.classList.add("hidden");
-  submitAnswer();
-}
 
-async function submitAnswer() {
   const q = questions[currentIndex];
-  const timeSpent = startTime ? (Date.now() - startTime) / 1000 : 0; // sekundy
+  const timeSpent = startTime ? (Date.now() - startTime) / 1000 : 0;
   const averageRating = calculateAverageRating();
 
   const payload = {
@@ -655,33 +654,47 @@ async function submitAnswer() {
     answer: pendingAnswer.answer,
     answer_method: pendingAnswer.method,
     suggestion: pendingAnswer.suggestion || "",
-    deepseek_thank_you: "" // Placeholder for generated message
+    deepseek_thank_you: ""
   };
 
-  // Jeśli WEBHOOK_URL nie jest skonfigurowany, przejdź dalej bez zapisu
+  // Zapisz lokalnie i przejdź dalej natychmiast — nie czekaj na serwer
+  appendAnswerHistory(payload);
+  goNext();
+
+  // Wyślij do Google Sheets w tle (fire and forget)
+  sendToSheetInBackground(payload);
+}
+
+function sendToSheetInBackground(payload) {
   if (!WEBHOOK_URL || WEBHOOK_URL === "TUTAJ_WKLEJ_URL_Z_APPS_SCRIPT") {
-    console.warn("WEBHOOK_URL nie jest skonfigurowany. Pomijam zapis do arkusza, ale plik TXT będzie gotowy.");
-    appendAnswerHistory(payload);
-    goNext();
+    console.warn("WEBHOOK_URL nie jest skonfigurowany. Pomijam zapis do arkusza.");
     return;
   }
 
-  try {
-    const res = await fetch(WEBHOOK_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload)
-    });
-    // Przy mode: no-cors nie możemy odczytać odpowiedzi, zaufaj że zadziałało
-    appendAnswerHistory(payload);
-    goNext();
-  } catch (err) {
-    console.error("Błąd zapisu:", err);
-    errorMsg.textContent = "Nie udało się zapisać postępu. Sprawdź połączenie i spróbuj ponownie.";
-    errorMsg.classList.remove("hidden");
-    retryBtn.classList.remove("hidden");
+  const json = JSON.stringify(payload);
+
+  // sendBeacon gwarantuje wysłanie nawet gdy użytkownik zamknie kartę
+  if (navigator.sendBeacon) {
+    const blob = new Blob([json], { type: "text/plain" });
+    const sent = navigator.sendBeacon(WEBHOOK_URL, blob);
+    console.log(sent ? "✅ Beacon wysłany:" : "⚠️ Beacon odrzucony, próbuję fetch:", payload.question_id);
+    if (sent) return;
   }
+
+  // Fallback: zwykły fetch jeśli sendBeacon niedostępny lub odrzucony
+  fetch(WEBHOOK_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
+    body: json
+  })
+    .then(() => console.log("✅ Fetch zapisany w tle:", payload.question_id))
+    .catch(err => console.warn("⚠️ Błąd zapisu w tle (dane są w TXT):", err));
+}
+
+// Zachowane dla przycisku "Spróbuj ponownie" — teraz nieużywane, ale zostawione dla bezpieczeństwa
+async function submitAnswer() {
+  sendToSheetInBackground(storedAnswers[storedAnswers.length - 1]);
 }
 
 function calculateAverageRating() {
@@ -743,13 +756,16 @@ function goNext() {
 }
 
 async function generateThankYouMessage() {
-  const suggestions = storedAnswers.map(a => a.suggestion).filter(s => s.trim()).join(' ');
-  if (!suggestions.trim()) {
-    // Brak komentarzy, proste podziękowanie
-    return;
-  }
+  if (storedAnswers.length === 0) return;
 
-  const prompt = `Ktoś napisał mi komentarze do moich rysunków: "${suggestions}". Na podstawie tych odpowiedzi podziękuj serdecznie za wypowiedzi, pochwal styl, nazwij jej lub jego styl humorystyczny, mów po imieniu (${userName}). Pozdrów w imieniu Pawła i podziękuj za ankietę.`;
+  // Zbuduj pełny kontekst ankiety
+  const surveyContext = storedAnswers.map((a, idx) => {
+    const rating = a.answer === 'podoba mi się' ? '👍 Podoba' : 
+                   a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
+    return `Q${idx + 1}: "${a.question_text}" → ${rating}${a.suggestion ? ` (komentarz: ${a.suggestion})` : ''}`;
+  }).join('\n');
+
+  const prompt = `Użytkownik (${userName}) właśnie wypełnił ankietę oceniającą moje rysunki humorystyczne. Oto jego odpowiedzi:\n\n${surveyContext}\n\nNa podstawie tych ocen i komentarzy: podziękuj mu serdecznie, pochwal jego wgląd w humor, scharakteryzuj jego styl oceniania, i daj mu ciepłą, osobistą wiadomość od Pawła. Bądź krótki (2-3 zdania), ale szczere i ze smakiem.`;
 
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
@@ -759,20 +775,23 @@ async function generateThankYouMessage() {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'deepseek-chat', // Zakładam model
+        model: 'deepseek-chat',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 200
+        max_tokens: 300
       })
     });
 
     if (response.ok) {
       const data = await response.json();
       const thankYouMessage = data.choices[0].message.content;
-      // Zapisz do payload lub wyświetl
-      console.log('Generated thank you:', thankYouMessage);
-      // Można dodać do wyników lub wyświetlić osobno
+      console.log('✅ DeepSeek response:\n' + thankYouMessage);
+      // Dodaj do wyświetlenia w ekranie końcowym
+      const thankYouEl = document.querySelector('.thanks-body');
+      if (thankYouEl) {
+        thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${thankYouMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+      }
     } else {
-      console.warn('DeepSeek API failed, using simple message');
+      console.warn('⚠️ DeepSeek API error:', response.status);
     }
   } catch (err) {
     console.error('Error with DeepSeek:', err);

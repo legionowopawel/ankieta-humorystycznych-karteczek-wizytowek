@@ -1,48 +1,83 @@
 /*
   Google Apps Script dla zapisu odpowiedzi do Google Sheets.
   1. Wklej ten kod do edytora Apps Script: https://script.google.com/
-  2. Zmień SHEET_ID na swój ID arkusza.
-  3. Wdróż jako aplikację sieciową (Web App) i ustaw dostęp: "Każdy, nawet anonimowy".
-  4. Skopiuj URL wdrożenia do zmiennej WEBHOOK_URL w app.js.
+  2. Wdróż jako aplikację sieciową (Web App):
+     - Wykonaj jako: Ja (swoje konto)
+     - Kto ma dostęp: Każdy (Everyone)
+  3. Skopiuj URL wdrożenia do zmiennej WEBHOOK_URL w app.js.
 */
 
 const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
-const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa arkusza
+const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa zakładki
 
+// Odpowiada na GET - np. gdy wchodzisz na URL w przeglądarce
+function doGet(e) {
+  return ContentService
+    .createTextOutput("Web App działa poprawnie. Wysyłaj dane przez POST.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// Obsługuje preflight CORS (OPTIONS) - niektóre przeglądarki to wysyłają przed POST
+function doOptions(e) {
+  return ContentService
+    .createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// Główna funkcja zapisująca odpowiedź do arkusza
 function doPost(e) {
   try {
-    const body = e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : e.parameter;
+    // Parsuj dane z requestu
+    let body;
+    if (e.postData && e.postData.contents) {
+      body = JSON.parse(e.postData.contents);
+    } else {
+      body = e.parameter || {};
+    }
+
+    // Otwórz arkusz
     const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
 
-    const row = [
+    // Dodaj nagłówki jeśli arkusz jest pusty
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Data zapisu",
+        "Timestamp",
+        "Imię",
+        "ID pytania",
+        "Pytanie",
+        "Obrazek A",
+        "Obrazek B",
+        "Odpowiedź",
+        "Metoda",
+        "Sugestia"
+      ]);
+    }
+
+    // Zapisz wiersz z odpowiedzią
+    sheet.appendRow([
       new Date(),
-      body.timestamp || "",
-      body.name || "",
-      body.question_id || "",
+      body.timestamp  || "",
+      body.name       || "",
+      body.question_id   || "",
       body.question_text || "",
-      body.image_a || "",
-      body.image_b || "",
-      body.answer || "",
+      body.image_a       || "",
+      body.image_b       || "",
+      body.answer        || "",
       body.answer_method || "",
-      body.suggestion || ""
-    ];
+      body.suggestion    || ""
+    ]);
 
-    sheet.appendRow(row);
-
+    // Zwróć sukces
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok' }))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      .createTextOutput(JSON.stringify({ status: "ok" }))
+      .setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
-    console.error(error);
+    console.error("doPost error:", error);
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
