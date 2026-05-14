@@ -2,12 +2,20 @@
    KONFIGURACJA
 ============================================= */
 
-// ID arkusza Google Sheets (wyodrębniony z URL)
-const SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
+// ID arkusza Google Sheets, z którego pobierane są pytania
+// To jest arkusz publiczny z pytaniami: Pytania_id
+const QUESTIONS_SHEET_ID = "1kfrkA8WesltaWUVwgmh5NzeIMFX88GEMAOJ8SuodK-s";
+
+// ID arkusza Google Sheets, do którego będą zapisywane odpowiedzi
+// To jest arkusz publiczny z odpowiedziami: Odpowiedzi
+const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
+
+const SHEET_ID = QUESTIONS_SHEET_ID;
 const GID = "0"; // ID arkusza (zakładki)
 
-// ⚠️  Wklej tutaj URL z Google Apps Script po wdrożeniu
-const WEBHOOK_URL = "TUTAJ_WKLEJ_URL_Z_APPS_SCRIPT";
+// URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
+// Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxlrqtndJzBuT02e486owj26kh-Ktzdq2XnyMRVG1ujLUMLmvRJQ2VabOWJ8O1Wpck7/exec";
 
 /* =============================================
    STAN APLIKACJI
@@ -52,6 +60,7 @@ const charCount = document.getElementById("char-count");
 const retryBtn = document.getElementById("retry-btn");
 const errorMsg = document.getElementById("error-msg");
 const downloadBtn = document.getElementById("download-btn");
+const resultsContainer = document.getElementById("results-container");
 
 /* =============================================
    NAWIGACJA MIĘDZY EKRANAMI
@@ -425,6 +434,7 @@ function goNext() {
     showQuestion(currentIndex);
     showScreen(2);
   } else {
+    showResultsTable();
     showScreen(5);
   }
 }
@@ -456,6 +466,95 @@ function buildDownloadText() {
   }).join('\n');
 
   return `${header}\n${rows}\n`;
+}
+
+function normalizeAnswerLabel(answer) {
+  if (answer === 'podoba mi się') return 'Podoba się';
+  if (answer === 'nie podoba mi się') return 'Nie podoba się';
+  if (answer === 'zdecydowanie mi się nie podoba') return 'Zdecydowanie nie';
+  return answer || 'Brak odpowiedzi';
+}
+
+function showResultsTable() {
+  if (!resultsContainer) return;
+
+  if (storedAnswers.length === 0) {
+    resultsContainer.innerHTML = '<p class="results-empty">Brak danych do wyświetlenia.</p>';
+    return;
+  }
+
+  const grouped = new Map();
+
+  storedAnswers.forEach(item => {
+    const key = item.image_b || item.question_id || item.question_text;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        image_b: item.image_b,
+        question_text: item.question_text,
+        total: 0,
+        yes: 0,
+        no: 0,
+        strongNo: 0
+      });
+    }
+    const row = grouped.get(key);
+    row.total += 1;
+    if (item.answer === 'podoba mi się') {
+      row.yes += 1;
+    } else if (item.answer === 'nie podoba mi się') {
+      row.no += 1;
+    } else if (item.answer === 'zdecydowanie mi się nie podoba') {
+      row.strongNo += 1;
+    }
+  });
+
+  const results = Array.from(grouped.values()).map(row => {
+    const positiveRate = row.total ? (row.yes / row.total) * 100 : 0;
+    const answerLabel = row.yes >= row.no + row.strongNo
+      ? 'Podoba się'
+      : row.no >= row.strongNo
+        ? 'Nie podoba się'
+        : 'Zdecydowanie nie';
+
+    return {
+      ...row,
+      positiveRate,
+      answerLabel,
+      subtitle: `${normalizeAnswerLabel(row.yes >= row.no + row.strongNo ? 'podoba mi się' : row.no >= row.strongNo ? 'nie podoba mi się' : 'zdecydowanie mi się nie podoba')}`
+    };
+  });
+
+  results.sort((a, b) => b.positiveRate - a.positiveRate);
+
+  const rowsHtml = results.map((item, index) => {
+    const nextRate = index + 1 < results.length ? results[index + 1].positiveRate : 0;
+    const advantage = index === 0 && results.length > 1
+      ? `${Math.max(0, (item.positiveRate - nextRate)).toFixed(0)} pkt przewagi`
+      : '';
+
+    return `
+      <div class="result-row${index === 0 ? ' result-top' : ''}">
+        <div class="result-rank">${index + 1}</div>
+        <div class="result-thumb">
+          <img src="images/${item.image_b}.jpg" alt="Miniatura" onerror="this.onerror=null;this.src='images/${item.image_b}.png'" />
+        </div>
+        <div class="result-info">
+          <div class="result-title">${item.question_text || item.image_b}</div>
+          <div class="result-answer">${item.answerLabel}</div>
+          <div class="result-stats">Tak: ${item.positiveRate.toFixed(0)}% ${advantage ? `· ${advantage}` : ''}</div>
+          <div class="result-count">Liczba głosów: ${item.total}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  resultsContainer.innerHTML = `
+    <div class="results-header">
+      <div>Ranking odpowiedzi</div>
+      <div>Procent „tak”</div>
+    </div>
+    <div class="results-list">${rowsHtml}</div>
+  `;
 }
 
 function downloadTxtFile() {

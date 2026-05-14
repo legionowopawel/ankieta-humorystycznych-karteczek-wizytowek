@@ -6,7 +6,7 @@
   4. Skopiuj URL wdrożenia do zmiennej WEBHOOK_URL w app.js.
 */
 
-const SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
+const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
 const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa arkusza
 
 function doPost(e) {
