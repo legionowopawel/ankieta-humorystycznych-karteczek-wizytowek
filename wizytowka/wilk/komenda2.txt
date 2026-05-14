@@ -1,0 +1,5 @@
+magick montage a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png a.png -tile 4x4 -geometry 620x877+0+0 -background white strona_A.png
+
+
+
+magick montage b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png b.png -tile 4x4 -geometry 620x877+0+0 -background white strona_B.png

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Ankieta obrazków</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- EKRAN 1: Powitanie -->
+  <div id="screen-1" class="screen active">
+    <div class="screen-inner welcome-screen">
+      <div class="logo-area">
+        <div class="logo-mark">✦</div>
+        <h1 class="title">Ankieta<br>obrazków</h1>
+        <p class="subtitle">Oceń grafiki i pomóż wybrać najlepsze rozwiązanie.<br>To zajmie dosłownie chwilę.</p>
+      </div>
+      <div class="form-area">
+        <label class="input-label" for="name-input">Twoje imię lub pseudonim</label>
+        <input type="text" id="name-input" class="name-input" placeholder="np. Ania, Kamil123..." maxlength="50" autocomplete="off" />
+        <p class="input-hint" id="name-error" aria-live="polite"></p>
+        <button class="btn-primary" id="start-btn">Zacznij →</button>
+      </div>
+      <p class="footer-note">Paweł · 2024</p>
+    </div>
+  </div>
+
+  <!-- EKRAN 2: Obrazek A + pytanie -->
+  <div id="screen-2" class="screen">
+    <div class="screen-inner">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <span class="progress-label" id="progress-label">Pytanie 1 z ?</span>
+      </div>
+      <div class="question-text" id="question-text-a"></div>
+      <div class="image-wrap" id="image-wrap-a">
+        <img id="image-a" src="" alt="Obrazek A" />
+        <div class="image-badge">A</div>
+      </div>
+      <p class="tap-hint">
+        <span class="tap-icon">👆</span>
+        Dotknij ekranu, aby zobaczyć drugą opcję
+      </p>
+    </div>
+  </div>
+
+  <!-- EKRAN 3: Obrazek B + ocena -->
+  <div id="screen-3" class="screen">
+    <div class="screen-inner">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-fill-3"></div>
+        </div>
+        <span class="progress-label" id="progress-label-3">Pytanie 1 z ?</span>
+      </div>
+      <div class="image-wrap swipeable" id="image-wrap-b">
+        <img id="image-b" src="" alt="Obrazek B" />
+        <div class="image-badge badge-b">B</div>
+        <div class="swipe-indicator swipe-right-hint" id="swipe-right-hint">👍</div>
+        <div class="swipe-indicator swipe-left-hint" id="swipe-left-hint">👎</div>
+      </div>
+      <div class="answer-text" id="answer-text"></div>
+      <div class="swipe-tip">
+        <span>← przesuń aby odrzucić</span>
+        <span>przesuń aby wybrać →</span>
+      </div>
+      <div class="rating-buttons">
+        <button class="btn-rate btn-like" data-answer="podoba mi się" data-method="button">
+          <span class="btn-icon">🟢</span> Podoba mi się
+        </button>
+        <button class="btn-rate btn-neutral" data-answer="nie podoba mi się" data-method="button">
+          <span class="btn-icon">🟡</span> Nie podoba mi się
+        </button>
+        <button class="btn-rate btn-dislike" data-answer="zdecydowanie mi się nie podoba" data-method="button">
+          <span class="btn-icon">🔴</span> Zdecydowanie nie
+        </button>
+      </div>
+      <div class="suggestion-wrap">
+        <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Napisz sugestię (opcjonalnie)..."></textarea>
+        <div class="char-counter"><span id="char-count">0</span>/1000</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EKRAN 4: Ładowanie -->
+  <div id="screen-4" class="screen">
+    <div class="screen-inner center-screen">
+      <div class="spinner"></div>
+      <p class="loading-text">Zapisuję odpowiedź...</p>
+      <button class="btn-retry hidden" id="retry-btn">Spróbuj ponownie</button>
+      <p class="error-msg hidden" id="error-msg"></p>
+    </div>
+  </div>
+
+  <!-- EKRAN 5: Dziękujemy -->
+  <div id="screen-5" class="screen">
+    <div class="screen-inner center-screen thanks-screen">
+      <div class="thanks-icon">🌍</div>
+      <h2 class="thanks-title">Dziękuję<br>za wypełnienie</h2>
+      <p class="thanks-body">Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍</p>
+      <button class="btn-primary" id="download-btn">Ściągnij wyniki jako TXT</button>
+      <p class="thanks-sig">— Paweł</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
