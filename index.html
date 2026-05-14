@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="pl">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Ankieta obrazków</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
   <!-- EKRAN 1: Powitanie -->
@@ -20,7 +24,8 @@
       </div>
       <div class="form-area">
         <label class="input-label" for="name-input">Twoje imię lub pseudonim</label>
-        <input type="text" id="name-input" class="name-input" placeholder="np. Ania, Kamil123..." maxlength="50" autocomplete="off" />
+        <input type="text" id="name-input" class="name-input" placeholder="np. Ania, Kamil123..." maxlength="50"
+          autocomplete="off" />
         <p class="input-hint" id="name-error" aria-live="polite"></p>
         <button class="btn-primary" id="start-btn">Zacznij →</button>
       </div>
@@ -81,7 +86,8 @@
         </button>
       </div>
       <div class="suggestion-wrap">
-        <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Napisz sugestię (opcjonalnie)..."></textarea>
+        <textarea id="suggestion-input" class="suggestion-input" maxlength="1000"
+          placeholder="Napisz sugestię (opcjonalnie)..."></textarea>
         <div class="char-counter"><span id="char-count">0</span>/1000</div>
       </div>
     </div>
@@ -110,4 +116,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>

@@ -29,28 +29,28 @@ const screens = {
   5: document.getElementById("screen-5"),
 };
 
-const nameInput   = document.getElementById("name-input");
-const nameError   = document.getElementById("name-error");
-const startBtn    = document.getElementById("start-btn");
+const nameInput = document.getElementById("name-input");
+const nameError = document.getElementById("name-error");
+const startBtn = document.getElementById("start-btn");
 
-const progressFill  = document.getElementById("progress-fill");
+const progressFill = document.getElementById("progress-fill");
 const progressLabel = document.getElementById("progress-label");
-const progressFill3  = document.getElementById("progress-fill-3");
+const progressFill3 = document.getElementById("progress-fill-3");
 const progressLabel3 = document.getElementById("progress-label-3");
 
 const questionTextA = document.getElementById("question-text-a");
-const imageWrapA    = document.getElementById("image-wrap-a");
-const imageA        = document.getElementById("image-a");
+const imageWrapA = document.getElementById("image-wrap-a");
+const imageA = document.getElementById("image-a");
 
-const imageWrapB    = document.getElementById("image-wrap-b");
-const imageB        = document.getElementById("image-b");
-const answerText    = document.getElementById("answer-text");
+const imageWrapB = document.getElementById("image-wrap-b");
+const imageB = document.getElementById("image-b");
+const answerText = document.getElementById("answer-text");
 
 const suggestionInput = document.getElementById("suggestion-input");
-const charCount       = document.getElementById("char-count");
+const charCount = document.getElementById("char-count");
 
-const retryBtn    = document.getElementById("retry-btn");
-const errorMsg    = document.getElementById("error-msg");
+const retryBtn = document.getElementById("retry-btn");
+const errorMsg = document.getElementById("error-msg");
 const downloadBtn = document.getElementById("download-btn");
 
 /* =============================================
@@ -130,7 +130,7 @@ function fetchQuestions() {
     }
 
     // Definiujemy globalny callback przed wstrzyknięciem skryptu
-    window[callbackName] = function(response) {
+    window[callbackName] = function (response) {
       cleanup();
       try {
         const parsed = parseGvizResponse(response);
@@ -142,7 +142,7 @@ function fetchQuestions() {
 
     // Wstrzykujemy tag <script> z JSONP
     const script = document.createElement("script");
-    script.id  = "gviz-script";
+    script.id = "gviz-script";
     script.src = url;
     script.onerror = () => {
       cleanup();
@@ -171,12 +171,12 @@ function parseGvizResponse(response) {
 
   // Indeksy kolumn (pasujące do arkusza)
   // Kolumny: id | rodzaj humoru | pytanie | nazwa pliku pytania | odpowiedź | nazwa pliku odpowiedzi | forma
-  const iId      = colIdx("id");
-  const iRodzaj  = colIdx("rodzaj humoru");
+  const iId = colIdx("id");
+  const iRodzaj = colIdx("rodzaj humoru");
   const iPytanie = colIdx("pytanie");
-  const iObrazA  = colIdx("nazwa pliku pytania");
-  const iOdp     = colIdx("odpowiedź");
-  const iObrazB  = colIdx("nazwa pliku odpowiedzi");
+  const iObrazA = colIdx("nazwa pliku pytania");
+  const iOdp = colIdx("odpowiedź");
+  const iObrazB = colIdx("nazwa pliku odpowiedzi");
 
   const result = [];
 
@@ -195,8 +195,8 @@ function parseGvizResponse(response) {
 
     result.push({
       id,
-      rodzaj:    val(iRodzaj),
-      pytanie:   val(iPytanie),
+      rodzaj: val(iRodzaj),
+      pytanie: val(iPytanie),
       obrazek_a: val(iObrazA),
       odpowiedz: val(iOdp),
       obrazek_b: val(iObrazB),
@@ -215,9 +215,9 @@ function showQuestion(index) {
   const pct = ((index + 1) / total) * 100;
 
   // Pasek postępu (oba ekrany)
-  progressFill.style.width  = pct + "%";
+  progressFill.style.width = pct + "%";
   progressLabel.textContent = `Pytanie ${index + 1} z ${total}`;
-  progressFill3.style.width  = pct + "%";
+  progressFill3.style.width = pct + "%";
   progressLabel3.textContent = `Pytanie ${index + 1} z ${total}`;
 
   // Ekran 2
@@ -234,13 +234,13 @@ function showQuestion(index) {
 
   // Reset animacji
   imageWrapB.style.transition = "";
-  imageWrapB.style.transform  = "";
-  imageWrapB.style.opacity    = "";
+  imageWrapB.style.transform = "";
+  imageWrapB.style.opacity = "";
   imageWrapB.classList.remove("swipe-out-left", "swipe-out-right");
 
   // Reset swipe hints
   document.getElementById("swipe-right-hint").style.opacity = "0";
-  document.getElementById("swipe-left-hint").style.opacity  = "0";
+  document.getElementById("swipe-left-hint").style.opacity = "0";
 }
 
 // Próbuje jpg, jpeg, png, webp
@@ -275,8 +275,8 @@ screens[2].addEventListener("click", () => {
 ============================================= */
 document.querySelectorAll(".btn-rate").forEach(btn => {
   btn.addEventListener("click", () => {
-    const answer  = btn.dataset.answer;
-    const method  = btn.dataset.method;
+    const answer = btn.dataset.answer;
+    const method = btn.dataset.method;
     const suggestion = suggestionInput.value.trim();
     triggerSave(answer, method, suggestion);
   });
@@ -294,12 +294,12 @@ suggestionInput.addEventListener("input", () => {
 ============================================= */
 let touchStartX = 0;
 let touchStartY = 0;
-let isSwiping   = false;
+let isSwiping = false;
 
 imageWrapB.addEventListener("touchstart", e => {
   touchStartX = e.changedTouches[0].clientX;
   touchStartY = e.changedTouches[0].clientY;
-  isSwiping   = false;
+  isSwiping = false;
 }, { passive: true });
 
 imageWrapB.addEventListener("touchmove", e => {
@@ -311,8 +311,8 @@ imageWrapB.addEventListener("touchmove", e => {
   const ratio = Math.min(Math.abs(dx) / 120, 1);
 
   imageWrapB.style.transition = "none";
-  imageWrapB.style.transform  = `translateX(${dx * 0.6}px) rotate(${dx * 0.04}deg)`;
-  imageWrapB.style.opacity    = 1 - ratio * 0.3;
+  imageWrapB.style.transform = `translateX(${dx * 0.6}px) rotate(${dx * 0.04}deg)`;
+  imageWrapB.style.opacity = 1 - ratio * 0.3;
 
   const rhint = document.getElementById("swipe-right-hint");
   const lhint = document.getElementById("swipe-left-hint");
@@ -329,10 +329,10 @@ imageWrapB.addEventListener("touchend", e => {
   const dx = e.changedTouches[0].clientX - touchStartX;
   if (!isSwiping || Math.abs(dx) < 50) {
     imageWrapB.style.transition = "";
-    imageWrapB.style.transform  = "";
-    imageWrapB.style.opacity    = "";
+    imageWrapB.style.transform = "";
+    imageWrapB.style.opacity = "";
     document.getElementById("swipe-right-hint").style.opacity = "0";
-    document.getElementById("swipe-left-hint").style.opacity  = "0";
+    document.getElementById("swipe-left-hint").style.opacity = "0";
     return;
   }
 
@@ -371,15 +371,15 @@ function triggerSave(answer, method, suggestion) {
 async function submitAnswer() {
   const q = questions[currentIndex];
   const payload = {
-    timestamp:     new Date().toISOString(),
-    name:          userName,
-    question_id:   q.id,
+    timestamp: new Date().toISOString(),
+    name: userName,
+    question_id: q.id,
     question_text: q.pytanie,
-    image_a:       q.obrazek_a,
-    image_b:       q.obrazek_b,
-    answer:        pendingAnswer.answer,
+    image_a: q.obrazek_a,
+    image_b: q.obrazek_b,
+    answer: pendingAnswer.answer,
     answer_method: pendingAnswer.method,
-    suggestion:    pendingAnswer.suggestion || ""
+    suggestion: pendingAnswer.suggestion || ""
   };
 
   // Jeśli WEBHOOK_URL nie jest skonfigurowany, przejdź dalej bez zapisu
