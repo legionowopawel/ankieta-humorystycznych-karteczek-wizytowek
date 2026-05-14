@@ -664,7 +664,7 @@ async function submitAnswer() {
   };
 
   // Jeśli WEBHOOK_URL nie jest skonfigurowany, przejdź dalej bez zapisu
-  if (WEBHOOK_URL === "TUTAJ_WKLEJ_URL_Z_APPS_SCRIPT") {
+  if (!WEBHOOK_URL || WEBHOOK_URL === "TUTAJ_WKLEJ_URL_Z_APPS_SCRIPT") {
     console.warn("WEBHOOK_URL nie jest skonfigurowany. Pomijam zapis do arkusza, ale plik TXT będzie gotowy.");
     appendAnswerHistory(payload);
     goNext();
