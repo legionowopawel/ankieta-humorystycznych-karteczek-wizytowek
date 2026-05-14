@@ -11,8 +11,8 @@ const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa arkusza
 
 function doPost(e) {
   try {
-    const body = JSON.parse(e.postData.contents);
-    const spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+    const body = e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : e.parameter;
+    const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
 
     const row = [
