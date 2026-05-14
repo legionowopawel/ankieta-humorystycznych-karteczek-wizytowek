@@ -1,0 +1,45 @@
+1. CodePen – Król nowoczesnych efektów
+To obecnie najlepsze miejsce. Większość twórców publikuje tam miniaturowe dzieła sztuki.
+
+Czego szukać: Wpisz w wyszukiwarkę: mouse trail, cursor effect, canvas particles mouse, interactive background.
+
+Dlaczego warto: Widzisz kod na żywo i możesz go od razu edytować.
+
+2. GitHub – Gotowe biblioteki
+Jeśli wolisz gotowe paczki, które łatwo wpiąć do projektu (jak te Twoje), sprawdź te repozytoria:
+
+cursor-effects: Legendarna paczka od Tim'a Holmana. Zawiera klasyki takie jak „Emoji Trail”, „Ghost Cursor” czy „Rainbow Cursor”.
+
+kursor: Bardziej nowoczesne, eleganckie kursory, które reagują na najechanie na przyciski.
+
+3. Dynamic Drive – Muzeum internetu
+To strona-legenda, z której pochodzi większość efektów krążących po sieci w latach 90. i 00.
+
+Adres: dynamicdrive.com (sekcja Mouse and Cursor effects).
+
+Uwaga: Wiele z nich używa starego kodu (np. document.all), więc mogą wymagać „przepisania” na nowoczesny JavaScript (dokładnie tak, jak te Twoje pliki .js).
+
+4. Pinterest i Behance (Inspiracje wizualne)
+Jeśli nie szukasz gotowego kodu, a pomysłu na to, co napisać:
+
+Szukaj pod hasłem: "Interactive Web Design Trends" lub "Creative Mouse Hover". Często znajdziesz tam animacje GIF, które możesz spróbować odtworzyć w canvas.
+
+Słowa kluczowe do samodzielnych poszukiwań:
+Używając tych fraz w Google lub na YouTube, trafisz na najbardziej zaawansowane skrypty:
+
+"Inverse Kinematics JS mouse" – dla efektów typu „macki” lub realistyczne ogony zwierząt.
+
+"Particle System Mouse Follower" – dla efektów dymu, ognia lub iskier.
+
+"Magnetic Cursor Effect" – kursor, który jest „przyciągany” do elementów menu.
+
+"Steering Behaviors JS" – jeśli chcesz, by kursor był „goniony” przez obiekty udające żywe stworzenia.
+
+Pomysły na nowe style, które pasowałyby do Twojej kolekcji:
+Efekt Magnesu: Kursor nie ciągnie ogona, ale okoliczne kropki/litery na ekranie uciekają przed nim lub są do niego przyciągane (efekt soczewki).
+
+Efekt Neonu: Prosta linia (jak w elastic_string.js), ale z bardzo mocnym shadowBlur i zmieniającymi się kolorami RGB.
+
+Efekt "Okruchów": Zostawianie na ekranie śladu, który nie znika od razu, ale powoli opada na dół ekranu (jak grawitacja w fairy_dust.js).
+
+Który z tych Twoich obecnych stylów najbardziej Ci się podoba? Mogę pomóc Ci zmodyfikować jeden z nich, by uzyskać coś zupełnie nowego!
