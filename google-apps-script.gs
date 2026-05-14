@@ -32,10 +32,17 @@ function doPost(e) {
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'ok' }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   } catch (error) {
+    console.error(error);
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }

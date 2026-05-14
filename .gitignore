@@ -1,0 +1,7 @@
+# Ignore local backup directory and temporary files
+backup/
+
+# Optional: ignore environment/test key files if stored in backup
+backup/*.env
+backup/*.key
+backup/*.secret
