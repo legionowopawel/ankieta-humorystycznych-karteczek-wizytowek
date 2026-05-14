@@ -15,7 +15,7 @@ const GID = "0"; // ID arkusza (zakładki)
 
 // URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
 // Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzfZ2oFIewvG6eHw4euuldWCzrqEMwZK1LwEvUPzQRAHENqqF9GXeCkr9ZmrlMRIeQ/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxNpn4ty7CRFbw9PykygwU4loiaQFcjHgBdWgj-4_8LhiXk1O9bIkZza7cc2VyHP8gw/exec";
 
 // Klucz API do DeepSeek
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
@@ -635,7 +635,11 @@ function animateSwipeOut(direction, callback) {
 function triggerSave(answer, method, suggestion) {
   // Snapshot pytania PRZED goNext() — po goNext() currentIndex już się zmieni
   const q = questions[currentIndex];
-  if (!q) { console.warn("triggerSave: brak pytania dla currentIndex", currentIndex); return; }
+  if (!q) {
+    console.warn("triggerSave: brak pytania dla currentIndex", currentIndex);
+    goNext();
+    return;
+  }
 
   const timeSpent = startTime ? (Date.now() - startTime) / 1000 : 0;
   const averageRating = calculateAverageRating();
@@ -762,7 +766,7 @@ async function generateThankYouMessage() {
   // Zbuduj kontekst ankiety
   const surveyContext = storedAnswers.map((a, idx) => {
     const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
-      a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
+                   a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
     return `Q${idx + 1}: "${a.question_text}" → ${rating}${a.suggestion ? ` (komentarz: ${a.suggestion})` : ''}`;
   }).join('\n');
 
@@ -780,12 +784,15 @@ async function generateThankYouMessage() {
 
     if (response.ok) {
       const data = await response.json();
-      if (data.message) {
+      if (data.status === 'ok' && data.message) {
         console.log('✅ DeepSeek response:\n' + data.message);
         const thankYouEl = document.querySelector('.thanks-body');
         if (thankYouEl) {
           thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${data.message}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
         }
+      } else if (data.status === 'error') {
+        console.warn('⚠️ GAS zwrócił błąd:', data.message);
+        // Nie wyświetlaj błędu użytkownikowi — zostaje domyślny tekst
       }
     } else {
       console.warn('⚠️ DeepSeek via GAS error:', response.status);
