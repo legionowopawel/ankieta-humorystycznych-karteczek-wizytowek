@@ -15,7 +15,7 @@ const GID = "0"; // ID arkusza (zakładki)
 
 // URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
 // Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxNpn4ty7CRFbw9PykygwU4loiaQFcjHgBdWgj-4_8LhiXk1O9bIkZza7cc2VyHP8gw/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzfZ2oFIewvG6eHw4euuldWCzrqEMwZK1LwEvUPzQRAHENqqF9GXeCkr9ZmrlMRIeQ/exec";
 
 // Klucz API do DeepSeek
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
@@ -762,7 +762,7 @@ async function generateThankYouMessage() {
   // Zbuduj kontekst ankiety
   const surveyContext = storedAnswers.map((a, idx) => {
     const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
-                   a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
+      a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
     return `Q${idx + 1}: "${a.question_text}" → ${rating}${a.suggestion ? ` (komentarz: ${a.suggestion})` : ''}`;
   }).join('\n');
 
