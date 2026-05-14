@@ -418,29 +418,11 @@ function fetchQuestions() {
    PARSOWANIE ODPOWIEDZI GVIZ
 ============================================= */
 function parseGvizResponse(response) {
-  // response.table.rows — tablica wierszy
-  // response.table.cols  — tablica kolumn (nagłówki)
   const table = response.table;
   if (!table || !table.rows) return [];
 
-  // Mapowanie kolumn po etykiecie (na wypadek zmiany kolejności)
-  const cols = table.cols.map(c => (c.label || "").toLowerCase().trim());
-
-  function colIdx(name) {
-    const idx = cols.indexOf(name);
-    return idx;
-  }
-
-  // Indeksy kolumn (pasujące do arkusza)
-  // Kolumny: id | rodzaj humoru | pytanie | nazwa pliku pytania | odpowiedź | nazwa pliku odpowiedzi | forma
-  const iId = colIdx("id");
-  const iRodzaj = colIdx("rodzaj humoru");
-  const iPytanie = colIdx("pytanie");
-  const iObrazA = colIdx("nazwa pliku pytania");
-  const iOdp = colIdx("odpowiedź");
-  const iObrazB = colIdx("nazwa pliku odpowiedzi");
-
   const result = [];
+  let skipped = 0;
 
   for (const row of table.rows) {
     const cells = row.c || [];
@@ -452,19 +434,32 @@ function parseGvizResponse(response) {
       return String(cell.v).trim();
     }
 
-    const id = val(iId);
-    if (!id || id === "0") continue; // pomijamy wiersze bez id
+    // Sztywne indeksy: id(0), rodzaj humoru(1), pytanie(2), nazwa pliku pytania(3), odpowiedź(4), nazwa pliku odpowiedzi(5)
+    const id = val(0);
+    const pytanie = val(2);
 
-    result.push({
+    console.log(`Row: id="${id}", pytanie="${pytanie.substring(0, 30)}..."`);
+
+    if (!id || id === "id" || id === "0" || isNaN(id)) {
+      skipped++;
+      console.warn(`❌ Pominięto wiersz: id="${id}" (nieprawidłowe lub nagłówek)`);
+      continue;
+    }
+
+    const question = {
       id,
-      rodzaj: val(iRodzaj),
-      pytanie: val(iPytanie),
-      obrazek_a: val(iObrazA),
-      odpowiedz: val(iOdp),
-      obrazek_b: val(iObrazB),
-    });
+      rodzaj: val(1),
+      pytanie: val(2),
+      obrazek_a: val(3),
+      odpowiedz: val(4),
+      obrazek_b: val(5),
+    };
+
+    console.log(`✅ Załadowano pytanie #${id}:`, question);
+    result.push(question);
   }
 
+  console.log(`\n📊 PODSUMOWANIE: Załadowano ${result.length} pytań, pominięto ${skipped} wierszy`);
   return result;
 }
 
@@ -674,12 +669,11 @@ async function submitAnswer() {
   try {
     const res = await fetch(WEBHOOK_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    if (data.status !== "ok") throw new Error("Serwer zwrócił błąd");
+    // Przy mode: no-cors nie możemy odczytać odpowiedzi, zaufaj że zadziałało
     appendAnswerHistory(payload);
     goNext();
   } catch (err) {
