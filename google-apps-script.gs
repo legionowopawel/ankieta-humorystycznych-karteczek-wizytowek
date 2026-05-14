@@ -10,8 +10,9 @@
 const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
 const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa zakładki
 
-// ⬇️ Wklej tutaj swój klucz DeepSeek — jest bezpieczny, bo ten plik nie jest publiczny
-const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
+// Klucz DeepSeek pobierany z Właściwości skryptu (Ustawienia projektu → Właściwości skryptu)
+// Ustaw tam: DEEPSEEK_API_KEY = twój_klucz
+const DEEPSEEK_API_KEY = PropertiesService.getScriptProperties().getProperty("DEEPSEEK_API_KEY");
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
 // Odpowiada na GET — zwraca ranking globalny gdy action=ranking, inaczej info

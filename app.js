@@ -15,7 +15,7 @@ const GID = "0"; // ID arkusza (zakładki)
 
 // URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
 // Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyO01bQpLyVuv7jNPP_0zG8XfaBP-hA9q4GS7bTshCKAW9pIjSEntwIvHaEynvxpAPW/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwCQLZVlzTXdDywi0qCFAxXse2O6dM3BIcB2jTHTCSY46SCJXVcbtcZi4Ski4EKuktE/exec";
 
 // Klucz API do DeepSeek
 const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
