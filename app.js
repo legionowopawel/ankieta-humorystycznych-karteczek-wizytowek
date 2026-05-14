@@ -500,10 +500,10 @@ function showQuestion(index) {
   document.getElementById("swipe-left-hint").style.opacity = "0";
 }
 
-// Próbuje jpg, jpeg, png, webp
+// Próbuje png, jpg, jpeg, webp
 function loadImage(imgEl, name) {
   if (!name) { imgEl.src = ""; return; }
-  const exts = ["jpg", "jpeg", "png", "webp"];
+  const exts = ["png", "jpg", "jpeg", "webp"];
   let tried = 0;
 
   function tryNext() {
