@@ -34,6 +34,10 @@ let language = "pl"; // wykrywane automatycznie
 let cursorType = "none"; // none, dragon, snake, textcircle, fairy, clock, string
 const storedAnswers = [];
 let pendingAnswer = null; // { answer, method, suggestion }
+let activeCursorEffect = null;
+let cursorPosition = { x: 0, y: 0 };
+let cursorAnimationFrame = null;
+let cursorEffects = {};
 
 /* =============================================
    ELEMENTY DOM
@@ -170,67 +174,9 @@ async function startSurvey() {
   }
 }
 
-const cursorEffects = {
-  dragon: createCursorDragonEffect(),
-  snake: createCursorSnakeEffect(),
-  textcircle: createCursorTextEffect(),
-  fairy: createCursorFairyEffect(),
-  clock: createCursorClockEffect(),
-  string: createCursorStringEffect(),
-};
-let activeCursorEffect = null;
-let cursorPosition = { x: 0, y: 0 };
-let cursorAnimationFrame = null;
-
-function resizeCursorCanvas() {
-  if (!cursorCanvas) return;
-  cursorCanvas.width = window.innerWidth;
-  cursorCanvas.height = window.innerHeight;
-}
-
-window.addEventListener('resize', resizeCursorCanvas);
-resizeCursorCanvas();
-
-function startCursorEffect(type) {
-  if (!cursorCanvas) return;
-  stopCursorEffect();
-  activeCursorEffect = cursorEffects[type] || null;
-  if (!activeCursorEffect) return;
-  cursorCanvas.style.display = 'block';
-  document.body.addEventListener('mousemove', onCursorMove);
-  document.body.addEventListener('mouseleave', onCursorLeave);
-
-  function frame() {
-    const ctx = cursorCanvas.getContext('2d');
-    ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
-    if (activeCursorEffect) {
-      activeCursorEffect.draw(ctx, cursorPosition);
-    }
-    cursorAnimationFrame = requestAnimationFrame(frame);
-  }
-  frame();
-}
-
-function stopCursorEffect() {
-  if (!cursorCanvas) return;
-  document.body.removeEventListener('mousemove', onCursorMove);
-  document.body.removeEventListener('mouseleave', onCursorLeave);
-  if (cursorAnimationFrame) {
-    cancelAnimationFrame(cursorAnimationFrame);
-    cursorAnimationFrame = null;
-  }
-  const ctx = cursorCanvas.getContext('2d');
-  ctx && ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
-}
-
-function onCursorMove(event) {
-  cursorPosition = { x: event.clientX, y: event.clientY };
-}
-
-function onCursorLeave() {
-  cursorPosition = { x: -100, y: -100 };
-}
-
+/* =============================================
+   CURSOR EFFECTS - Definicje funkcji
+============================================= */
 function createCursorDragonEffect() {
   return {
     draw(ctx, pos) {
@@ -335,6 +281,65 @@ function createCursorStringEffect() {
     }
   };
 }
+
+function resizeCursorCanvas() {
+  if (!cursorCanvas) return;
+  cursorCanvas.width = window.innerWidth;
+  cursorCanvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeCursorCanvas);
+resizeCursorCanvas();
+
+function startCursorEffect(type) {
+  if (!cursorCanvas) return;
+  stopCursorEffect();
+  activeCursorEffect = cursorEffects[type] || null;
+  if (!activeCursorEffect) return;
+  cursorCanvas.style.display = 'block';
+  document.body.addEventListener('mousemove', onCursorMove);
+  document.body.addEventListener('mouseleave', onCursorLeave);
+
+  function frame() {
+    const ctx = cursorCanvas.getContext('2d');
+    ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+    if (activeCursorEffect) {
+      activeCursorEffect.draw(ctx, cursorPosition);
+    }
+    cursorAnimationFrame = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function stopCursorEffect() {
+  if (!cursorCanvas) return;
+  document.body.removeEventListener('mousemove', onCursorMove);
+  document.body.removeEventListener('mouseleave', onCursorLeave);
+  if (cursorAnimationFrame) {
+    cancelAnimationFrame(cursorAnimationFrame);
+    cursorAnimationFrame = null;
+  }
+  const ctx = cursorCanvas.getContext('2d');
+  ctx && ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+}
+
+function onCursorMove(event) {
+  cursorPosition = { x: event.clientX, y: event.clientY };
+}
+
+function onCursorLeave() {
+  cursorPosition = { x: -100, y: -100 };
+}
+
+// Teraz definiujemy cursorEffects po wszystkich funkcjach create*
+cursorEffects = {
+  dragon: createCursorDragonEffect(),
+  snake: createCursorSnakeEffect(),
+  textcircle: createCursorTextEffect(),
+  fairy: createCursorFairyEffect(),
+  clock: createCursorClockEffect(),
+  string: createCursorStringEffect(),
+};
 
 /* =============================================
    POBIERANIE DANYCH — Google Visualization Query API
