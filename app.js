@@ -100,9 +100,9 @@ function showScreen(n) {
 /* =============================================
    EKRAN 1 — START
 ============================================= */
-startBtn.addEventListener("click", handleStart);
-nameInput.addEventListener("keydown", e => { if (e.key === "Enter") handleStart(); });
-anonymousBtn.addEventListener("click", () => {
+startBtn?.addEventListener("click", handleStart);
+nameInput?.addEventListener("keydown", e => { if (e.key === "Enter") handleStart(); });
+anonymousBtn?.addEventListener("click", () => {
   isAnonymous = true;
   userName = "Anonimowy";
   userGender = genderSelect.value || "";
@@ -144,15 +144,15 @@ function setCursor(type) {
 }
 
 async function handleStart() {
-  const val = nameInput.value.trim();
+  const val = nameInput?.value?.trim() || "";
   if (!isAnonymous && val.length < 2) {
-    nameError.textContent = "Podaj imię lub pseudonim (min. 2 znaki).";
-    nameInput.focus();
+    if (nameError) nameError.textContent = "Podaj imię lub pseudonim (min. 2 znaki).";
+    nameInput?.focus();
     return;
   }
-  nameError.textContent = "";
+  if (nameError) nameError.textContent = "";
   userName = isAnonymous ? "Anonimowy" : val;
-  userGender = genderSelect.value || "";
+  userGender = genderSelect?.value || "";
   language = navigator.language.startsWith('pl') ? 'pl' : 'en';
   setCursor(cursorType);
   startSurvey();
@@ -160,24 +160,30 @@ async function handleStart() {
 
 async function startSurvey() {
   startTime = Date.now();
-  startBtn.disabled = true;
-  startBtn.textContent = "Ładuję pytania...";
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.textContent = "Ładuję pytania...";
+  }
 
   try {
     questions = await fetchQuestions();
     if (questions.length === 0) {
-      nameError.textContent = "Brak pytań w arkuszu. Sprawdź dane źródłowe.";
-      startBtn.disabled = false;
-      startBtn.textContent = "Zacznij →";
+      if (nameError) nameError.textContent = "Brak pytań w arkuszu. Sprawdź dane źródłowe.";
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = "Zacznij →";
+      }
       return;
     }
     currentIndex = 0;
     showQuestion(currentIndex);
     showScreen(2);
   } catch (err) {
-    nameError.textContent = "Nie udało się pobrać pytań. Sprawdź połączenie i spróbuj ponownie.";
-    startBtn.disabled = false;
-    startBtn.textContent = "Zacznij →";
+    if (nameError) nameError.textContent = "Nie udało się pobrać pytań. Sprawdź połączenie i spróbuj ponownie.";
+    if (startBtn) {
+      startBtn.disabled = false;
+      startBtn.textContent = "Zacznij →";
+    }
     console.error(err);
   }
 }
@@ -503,18 +509,22 @@ function showQuestion(index) {
   answerText.textContent = q.odpowiedz ? `„${q.odpowiedz}"` : "";
 
   // Reset textarea i licznika
-  suggestionInput.value = "";
-  charCount.textContent = "0";
+  if (suggestionInput) suggestionInput.value = "";
+  if (charCount) charCount.textContent = "0";
 
   // Reset animacji
-  imageWrapB.style.transition = "";
-  imageWrapB.style.transform = "";
-  imageWrapB.style.opacity = "";
-  imageWrapB.classList.remove("swipe-out-left", "swipe-out-right");
+  if (imageWrapB) {
+    imageWrapB.style.transition = "";
+    imageWrapB.style.transform = "";
+    imageWrapB.style.opacity = "";
+    imageWrapB.classList.remove("swipe-out-left", "swipe-out-right");
+  }
 
   // Reset swipe hints
-  document.getElementById("swipe-right-hint").style.opacity = "0";
-  document.getElementById("swipe-left-hint").style.opacity = "0";
+  const rhHint = document.getElementById("swipe-right-hint");
+  const lhHint = document.getElementById("swipe-left-hint");
+  if (rhHint) rhHint.style.opacity = "0";
+  if (lhHint) lhHint.style.opacity = "0";
 }
 
 // Próbuje mp4, png, jpg, jpeg, webp — z cache-bustingiem żeby zawsze ładować świeże pliki
@@ -615,7 +625,7 @@ document.querySelectorAll(".btn-rate").forEach(btn => {
 /* =============================================
    LICZNIK ZNAKÓW
 ============================================= */
-suggestionInput.addEventListener("input", () => {
+suggestionInput?.addEventListener("input", () => {
   charCount.textContent = suggestionInput.value.length;
 });
 
@@ -626,13 +636,13 @@ let touchStartX = 0;
 let touchStartY = 0;
 let isSwiping = false;
 
-imageWrapB.addEventListener("touchstart", e => {
+imageWrapB?.addEventListener("touchstart", e => {
   touchStartX = e.changedTouches[0].clientX;
   touchStartY = e.changedTouches[0].clientY;
   isSwiping = false;
 }, { passive: true });
 
-imageWrapB.addEventListener("touchmove", e => {
+imageWrapB?.addEventListener("touchmove", e => {
   const dx = e.changedTouches[0].clientX - touchStartX;
   const dy = e.changedTouches[0].clientY - touchStartY;
   if (Math.abs(dx) < Math.abs(dy)) return; // przewijanie pionowe
@@ -655,7 +665,7 @@ imageWrapB.addEventListener("touchmove", e => {
   }
 }, { passive: true });
 
-imageWrapB.addEventListener("touchend", e => {
+imageWrapB?.addEventListener("touchend", e => {
   const dx = e.changedTouches[0].clientX - touchStartX;
   if (!isSwiping || Math.abs(dx) < 50) {
     imageWrapB.style.transition = "";
@@ -771,9 +781,9 @@ function calculateAverageRating() {
   return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
 }
 
-retryBtn.addEventListener("click", () => {
-  retryBtn.classList.add("hidden");
-  errorMsg.classList.add("hidden");
+retryBtn?.addEventListener("click", () => {
+  retryBtn?.classList.add("hidden");
+  errorMsg?.classList.add("hidden");
   submitAnswer();
 });
 
