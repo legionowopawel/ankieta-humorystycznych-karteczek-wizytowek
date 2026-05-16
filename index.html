@@ -74,7 +74,20 @@
         <button class="btn-secondary" id="anonymous-btn">Ankieta anonimowa</button>
         <button class="btn-primary" id="start-btn">Zacznij →</button>
       </div>
-      <p class="footer-note">Paweł · v1 2026</p>
+
+      <!-- Film powitalny -->
+      <div class="welcome-video-wrap">
+        <video class="welcome-video" src="mp4/1.mp4" autoplay muted loop playsinline
+               onerror="this.closest('.welcome-video-wrap').style.display='none'"></video>
+      </div>
+
+      <!-- Sekcja dla zmęczonych — na dole ekranu powitalnego -->
+      <div class="welcome-exit-section">
+        <p class="welcome-exit-text">dla zmęczonych ankietowanych.. kończę ankietę bo pytań jest za dużo.</p>
+        <button class="btn-secondary welcome-exit-btn" id="save-progress-btn">Zapisz wyniki</button>
+      </div>
+
+      <p class="footer-note">Paweł · 2024</p>
     </div>
   </div>
 
@@ -117,13 +130,11 @@
         <span>← przesuń aby odrzucić</span>
         <span>przesuń aby wybrać →</span>
       </div>
-      <!-- Sugestia PONAD przyciskami oceny -->
       <div class="suggestion-wrap">
         <label for="suggestion-input" class="suggestion-label">Napisz sugestię (opcjonalnie)</label>
         <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Twój komentarz..."></textarea>
         <div class="char-counter"><span id="char-count">0</span>/1000</div>
       </div>
-      <!-- Przyciski oceny w jednym rzędzie -->
       <div class="rating-buttons">
         <button class="btn-rate btn-like" data-answer="podoba mi się" data-method="button">
           <span class="btn-icon">🟢</span> Podoba
@@ -162,11 +173,6 @@
       <button class="btn-primary" id="download-btn">Ściągnij wyniki jako TXT</button>
       <p class="thanks-sig">— Paweł</p>
     </div>
-  </div>
-
-  <div class="survey-exit-note" aria-live="polite">
-    <div class="survey-exit-text">dla zmęczonych ankietowanych.. kończę ankietę bo pytań jest za dużo.</div>
-    <button class="btn-secondary survey-exit-btn" id="save-progress-btn">Zapisz wyniki</button>
   </div>
 
   <script src="Efekty_html/elastic_dragon.js"></script>

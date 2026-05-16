@@ -1071,3 +1071,58 @@ body {
 .result-row:hover .result-zoom {
   opacity: 1;
 }
+
+/* =============================================
+   EKRAN 1 — FILM POWITALNY
+============================================= */
+.welcome-video-wrap {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 24px;
+  box-shadow: var(--shadow);
+  background: var(--ink);
+}
+
+.welcome-video {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 280px;
+  object-fit: cover;
+}
+
+/* =============================================
+   EKRAN 1 — SEKCJA DLA ZMĘCZONYCH
+============================================= */
+.welcome-exit-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(26, 22, 17, 0.05);
+  border: 1px dashed var(--ink-faint);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.welcome-exit-text {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.welcome-exit-btn {
+  width: auto !important;
+  padding: 12px 28px !important;
+  margin-bottom: 0 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Ukryj stary pływający pasek — zastąpiony sekcją na ekranie 1 */
+.survey-exit-note {
+  display: none !important;
+}
