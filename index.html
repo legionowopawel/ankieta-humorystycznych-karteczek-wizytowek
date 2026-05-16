@@ -18,6 +18,7 @@
 <body>
   <canvas id="dragonCanvas"></canvas>
   <div id="cursorBar">
+    <button class="btn-back-top" id="back-btn-top">← Wstecz</button>
     <span class="cbar-label">🖱️ Wskaźnik myszy</span>
     <button class="cbar-btn active" data-cursor="none" id="btn-none">
       <span class="cbar-icon">🖱️</span>
@@ -85,7 +86,6 @@
         </div>
         <span class="progress-label" id="progress-label">Pytanie 1 z ?</span>
       </div>
-      <button class="btn-back" id="back-btn">← Wstecz</button>
       <div class="question-text" id="question-text-a"></div>
       <div class="image-wrap" id="image-wrap-a">
         <img id="image-a" src="" alt="Obrazek A" />
@@ -107,7 +107,6 @@
         </div>
         <span class="progress-label" id="progress-label-3">Pytanie 1 z ?</span>
       </div>
-      <button class="btn-back" id="back-btn-3">← Wstecz</button>
       <div class="image-wrap swipeable" id="image-wrap-b">
         <img id="image-b" src="" alt="Obrazek B" />
 
@@ -119,6 +118,11 @@
         <span>← przesuń aby odrzucić</span>
         <span>przesuń aby wybrać →</span>
       </div>
+      <div class="suggestion-wrap">
+        <label for="suggestion-input" class="suggestion-label">Napisz sugestię (opcjonalnie)</label>
+        <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Twój komentarz..."></textarea>
+        <div class="char-counter"><span id="char-count">0</span>/1000</div>
+      </div>
       <div class="rating-buttons">
         <button class="btn-rate btn-like" data-answer="podoba mi się" data-method="button">
           <span class="btn-icon">🟢</span> Podoba mi się
@@ -129,11 +133,6 @@
         <button class="btn-rate btn-dislike" data-answer="zdecydowanie mi się nie podoba" data-method="button">
           <span class="btn-icon">🔴</span> Zdecydowanie nie
         </button>
-      </div>
-      <div class="suggestion-wrap">
-        <textarea id="suggestion-input" class="suggestion-input" maxlength="1000"
-          placeholder="Napisz sugestię (opcjonalnie)..."></textarea>
-        <div class="char-counter"><span id="char-count">0</span>/1000</div>
       </div>
     </div>
   </div>
@@ -152,7 +151,7 @@
   <div id="screen-5" class="screen">
     <div class="screen-inner center-screen thanks-screen">
       <div class="thanks-icon">🌍</div>
-      <h2 class="thanks-title">Dziękuję<br>za wypełnienie</h2>
+      <h2 class="thanks-title">Dziękuję<br><span class="thanks-subtitle">za wypełnienie</span></h2>
       <p class="thanks-body">Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍</p>
       <div class="results-panel">
         <h3 class="results-heading">Aktualne wyniki</h3>
@@ -178,6 +177,7 @@
     <div class="lightbox-inner" onclick="event.stopPropagation()">
       <button class="lightbox-close" onclick="closeLightbox()">✕</button>
       <img id="lightbox-img" src="" alt="Podgląd obrazka" />
+      <button class="lightbox-download" id="lightbox-download-btn" onclick="downloadLightboxMedia()">⬇️ Ściągnij</button>
     </div>
   </div>
 

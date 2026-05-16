@@ -43,6 +43,7 @@ let activeCursorEffect = null;
 let cursorPosition = { x: 0, y: 0 };
 let cursorAnimationFrame = null;
 let cursorEffects = {};
+let currentLightboxMedia = null; // Przechowuje nazwę aktualnego mediów w lightbox
 
 /* =============================================
    ELEMENTY DOM
@@ -61,6 +62,7 @@ const genderSelect = document.getElementById("gender-select");
 const anonymousBtn = document.getElementById("anonymous-btn");
 const startBtn = document.getElementById("start-btn");
 const backBtn = document.getElementById("back-btn");
+const backBtnTop = document.getElementById("back-btn-top");
 const cursorToolbar = document.getElementById("cursorBar");
 const cursorCanvas = document.getElementById("dragonCanvas");
 
@@ -482,11 +484,21 @@ function showQuestion(index) {
   progressFill3.style.width = pct + "%";
   progressLabel3.textContent = `Pytanie ${index + 1} z ${total}`;
 
+  // Czyszczenie poprzednich video
+  [imageWrapA, imageWrapB].forEach(wrap => {
+    if (wrap) {
+      const videos = wrap.querySelectorAll('video');
+      videos.forEach(v => v.remove());
+    }
+  });
+
   // Ekran 2
   questionTextA.textContent = q.pytanie;
+  imageA.style.display = '';
   loadImage(imageA, q.obrazek_a);
 
   // Ekran 3
+  imageB.style.display = '';
   loadImage(imageB, q.obrazek_b);
   answerText.textContent = q.odpowiedz ? `„${q.odpowiedz}"` : "";
 
@@ -505,25 +517,56 @@ function showQuestion(index) {
   document.getElementById("swipe-left-hint").style.opacity = "0";
 }
 
-// Próbuje png, jpg, jpeg, webp — z cache-bustingiem żeby zawsze ładować świeże pliki
+// Próbuje mp4, png, jpg, jpeg, webp — z cache-bustingiem żeby zawsze ładować świeże pliki
 function loadImage(imgEl, name) {
   if (!name) { imgEl.src = ""; return; }
-  const exts = ["png", "jpg", "jpeg", "webp"];
+
   const bust = "?v=" + (window._imageCacheBust || (window._imageCacheBust = Date.now()));
-  let tried = 0;
+  const imageWrap = imgEl.closest('.image-wrap');
 
-  function tryNext() {
-    if (tried >= exts.length) {
-      imgEl.src = "";
-      imgEl.alt = "Brak obrazka";
-      return;
-    }
-    imgEl.src = `images/${name}.${exts[tried]}${bust}`;
-    tried++;
-  }
+  // Najpierw spróbuj MP4
+  const videoPath = `images/${name}.mp4${bust}`;
 
-  imgEl.onerror = tryNext;
-  tryNext();
+  // Sprawdź czy video można załadować
+  fetch(videoPath, { method: 'HEAD' })
+    .then(res => {
+      if (res.ok) {
+        // Zastąp img videoem
+        if (imageWrap) {
+          const video = document.createElement('video');
+          video.src = videoPath;
+          video.controls = true;
+          video.autoplay = true;
+          video.style.width = '100%';
+          video.style.height = 'auto';
+          video.style.maxHeight = '300px';
+          video.style.borderRadius = '12px';
+
+          imgEl.style.display = 'none';
+          imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
+        }
+      } else {
+        throw new Error('MP4 not found, try image formats');
+      }
+    })
+    .catch(() => {
+      // Fallback na jpg/png
+      const exts = ["png", "jpg", "jpeg", "webp"];
+      let tried = 0;
+
+      function tryNext() {
+        if (tried >= exts.length) {
+          imgEl.src = "";
+          imgEl.alt = "Brak obrazka";
+          return;
+        }
+        imgEl.src = `images/${name}.${exts[tried]}${bust}`;
+        tried++;
+      }
+
+      imgEl.onerror = tryNext;
+      tryNext();
+    });
 }
 
 /* =============================================
@@ -533,12 +576,27 @@ screens[2].addEventListener("click", () => {
   showScreen(3);
 });
 
-backBtn.addEventListener("click", (e) => {
+backBtn?.addEventListener("click", (e) => {
   e.stopPropagation(); // Prevent triggering screen click
   showScreen(1);
 });
 
-document.getElementById("back-btn-3").addEventListener("click", () => {
+backBtnTop?.addEventListener("click", () => {
+  if (currentIndex > 0 && currentIndex < questions.length) {
+    currentIndex--;
+    showQuestion(currentIndex);
+    showScreen(2);
+  } else if (currentIndex === questions.length) {
+    // Jeśli jesteśmy na ekranie dziękczyn, wróć do poprzedniego pytania
+    currentIndex--;
+    showQuestion(currentIndex);
+    showScreen(2);
+  } else {
+    showScreen(1);
+  }
+});
+
+document.getElementById("back-btn-3")?.addEventListener("click", () => {
   showScreen(2);
 });
 
@@ -765,7 +823,20 @@ function goNext() {
 async function generateThankYouMessage() {
   if (storedAnswers.length === 0) return;
 
-  // Zbuduj kontekst ankiety
+  // Sprawdź czy jakikolwiek suggestion zawiera tekst
+  const hasSuggestions = storedAnswers.some(a => a.suggestion && a.suggestion.trim().length > 0);
+
+  if (!hasSuggestions) {
+    // Brak sugestii - automatyczna, lakoniczna wiadomość
+    const autoMessage = "Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – świetnie wyczuwasz niuanse humoru, od docenienia trafnego żartu po subtelną rezerwę. Paweł prosił, by przekazać Ci, że Twoje spojrzenie wiele dla niego znaczy i inspiruje go do dalszej pracy z dystansem i uśmiechem.";
+    const thankYouEl = document.querySelector('.thanks-body');
+    if (thankYouEl) {
+      thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+    }
+    return;
+  }
+
+  // Jest co najmniej jeden suggestion - wywołaj DeepSeek
   const surveyContext = storedAnswers.map((a, idx) => {
     const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
       a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
@@ -937,21 +1008,96 @@ function renderRanking(answers) {
   `;
 }
 
-// Lightbox — pełnoekranowy podgląd obrazka
+// Lightbox — pełnoekranowy podgląd obrazka/video
 function openLightbox(imageName) {
   if (!imageName) return;
+  currentLightboxMedia = imageName; // Zapisz aktualny media do ściągnięcia
   const bust = window._imageCacheBust || Date.now();
   const lb = document.getElementById('lightbox');
   const lbImg = document.getElementById('lightbox-img');
-  lbImg.src = `images/${imageName}.png?v=${bust}`;
-  lbImg.onerror = () => { lbImg.src = `images/${imageName}.jpg?v=${bust}`; lbImg.onerror = null; };
-  lb.classList.add('active');
-  document.body.style.overflow = 'hidden';
+
+  // Najpierw spróbuj MP4
+  const videoPath = `images/${imageName}.mp4?v=${bust}`;
+
+  fetch(videoPath, { method: 'HEAD' })
+    .then(res => {
+      if (res.ok) {
+        // Wyświetl video
+        lbImg.style.display = 'none';
+        let video = lb.querySelector('video');
+        if (!video) {
+          video = document.createElement('video');
+          video.controls = true;
+          video.autoplay = true;
+          video.style.maxWidth = '90vw';
+          video.style.maxHeight = '85vh';
+          video.style.borderRadius = '12px';
+          video.style.boxShadow = '0 8px 40px rgba(0,0,0,0.6)';
+          video.style.objectFit = 'contain';
+          lb.querySelector('.lightbox-inner').appendChild(video);
+        }
+        video.src = videoPath;
+        video.style.display = 'block';
+        lb.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      } else {
+        throw new Error('MP4 not found');
+      }
+    })
+    .catch(() => {
+      // Fallback na PNG/JPG
+      lbImg.style.display = 'block';
+      const video = lb.querySelector('video');
+      if (video) video.style.display = 'none';
+      lbImg.src = `images/${imageName}.png?v=${bust}`;
+      lbImg.onerror = () => { lbImg.src = `images/${imageName}.jpg?v=${bust}`; lbImg.onerror = null; };
+      lb.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    });
 }
 
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('active');
   document.body.style.overflow = '';
+}
+
+function downloadLightboxMedia() {
+  if (!currentLightboxMedia) return;
+
+  const bust = window._imageCacheBust || Date.now();
+  const imageName = currentLightboxMedia;
+
+  // Najpierw spróbuj ściągnąć MP4
+  const videoPath = `images/${imageName}.mp4?v=${bust}`;
+  const imgPath = `images/${imageName}.png?v=${bust}`;
+
+  fetch(videoPath, { method: 'HEAD' })
+    .then(res => {
+      if (res.ok) {
+        // Ściągnij video
+        downloadFile(videoPath, `${imageName}.mp4`);
+      } else {
+        throw new Error('Video not found');
+      }
+    })
+    .catch(() => {
+      // Spróbuj PNG
+      const link = document.createElement('a');
+      link.href = imgPath;
+      link.download = `${imageName}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+}
+
+function downloadFile(url, filename) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 // Zachowane dla kompatybilności
