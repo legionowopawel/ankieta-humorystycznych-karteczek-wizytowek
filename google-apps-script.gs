@@ -131,6 +131,11 @@ function doPost(e) {
       return handleDeepSeek(body.prompt);
     }
 
+    // Jeśli action=saveDeepSeek — zapisz odpowiedź DeepSeek do kolumny K ostatniego wiersza ankietowanego
+    if (body.action === "saveDeepSeek") {
+      return handleSaveDeepSeek(body);
+    }
+
     // W przeciwnym razie — zapisz odpowiedź do arkusza
     const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
@@ -147,7 +152,8 @@ function doPost(e) {
         "Obrazek B",
         "Odpowiedź",
         "Metoda",
-        "Sugestia"
+        "Sugestia",
+        "DeepSeek - wiadomość"
       ]);
     }
 
@@ -162,7 +168,8 @@ function doPost(e) {
       body.image_b       || "",
       body.answer        || "",
       body.answer_method || "",
-      body.suggestion    || ""
+      body.suggestion    || "",
+      "" // kolumna K — wypełniana później przez saveDeepSeek
     ]);
 
     return ContentService
@@ -171,6 +178,56 @@ function doPost(e) {
 
   } catch (error) {
     console.error("doPost error:", error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Zapisuje odpowiedź DeepSeek do kolumny K przy ostatnim wierszu danego ankietowanego
+// Identyfikuje ankietowanego po imieniu + timestamp pierwszej odpowiedzi
+function handleSaveDeepSeek(body) {
+  try {
+    const name = body.name || "";
+    const firstTimestamp = body.first_timestamp || "";
+    const deepseekMessage = body.deepseek_message || "";
+
+    if (!deepseekMessage) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "error", message: "Brak wiadomości DeepSeek" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+
+    // Szukamy ostatniego wiersza pasującego do tego ankietowanego (po imieniu)
+    // Kolumna C (index 2) = Imię
+    let lastMatchRow = -1;
+    for (let i = 1; i < data.length; i++) {
+      const rowName = String(data[i][2] || "").trim();
+      if (rowName === name.trim()) {
+        lastMatchRow = i + 1; // 1-based row index
+      }
+    }
+
+    if (lastMatchRow === -1) {
+      // Fallback: wpisz w ostatni wiersz arkusza
+      lastMatchRow = sheet.getLastRow();
+    }
+
+    // Wpisz DeepSeek message do kolumny K (11) ostatniego wiersza ankietowanego
+    sheet.getRange(lastMatchRow, 11).setValue(deepseekMessage);
+
+    console.log("✅ DeepSeek zapisany do wiersza " + lastMatchRow + ", kolumna K");
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "ok", row: lastMatchRow }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    console.error("handleSaveDeepSeek error:", error);
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
       .setMimeType(ContentService.MimeType.JSON);

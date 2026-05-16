@@ -23,7 +23,7 @@ const GID = "0"; // ID arkusza (zakładki)
 // - GAS pobiera klucz z właściwych zmiennych i wysyła request do DeepSeek
 // - Odpowiedź wraca do frontend'u jako JSON
 // Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxm1efSpdxnDxUgoQo0pD0IPBy_rxmOnx4rfvJBA6RTT7EzI9U7kYglq8AvtDLkjQ/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyWRv0VrTgYbRmxfF14fsDTtPc9MLlkFm3aBr_X7HSMahvvB6zvf-UTzG3cZ9FzlzFD/exec";
 
 console.log('🔧 App initialized:');
 console.log('  WEBHOOK_URL:', WEBHOOK_URL);
@@ -803,19 +803,8 @@ function saveProgress() {
     return;
   }
 
-  // Pokaż ekran ładowania z komunikatem o zapisie wyników
-  showScreen(4);
-  document.querySelector('.loading-text').textContent = 'Zapisuję wyniki...';
-
-  // Symuluj krótkie opóźnienie dla UX
-  setTimeout(() => {
-    downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wyniki'}.txt`);
-    generateThankYouMessage().then(() => {
-      showGlobalRanking().then(() => {
-        showScreen(5);
-      });
-    });
-  }, 1000);
+  downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wyniki'}.txt`);
+  showLoadingScreen();
 }
 
 function goNext() {
@@ -824,18 +813,136 @@ function goNext() {
     showQuestion(currentIndex);
     showScreen(2);
   } else {
-    generateThankYouMessage().then(() => {
-      showGlobalRanking().then(() => {
-        showScreen(5);
-      });
-    });
+    // Ostatnie pytanie — pokaż ekran ładowania z game-style paskiem postępu
+    showLoadingScreen();
   }
+}
+
+/* =============================================
+   EKRAN ŁADOWANIA — game-style pasek postępu
+   Trwa max 3 sekundy lub krócej jeśli DeepSeek odpowie
+============================================= */
+function showLoadingScreen() {
+  // Przygotuj ekran ładowania
+  const loadingText = document.querySelector('.loading-text');
+  const retryBtnEl = document.getElementById('retry-btn');
+  const errorMsgEl = document.getElementById('error-msg');
+  if (loadingText) loadingText.textContent = 'Przetwarzam Twoje odpowiedzi...';
+  retryBtnEl?.classList.add('hidden');
+  errorMsgEl?.classList.add('hidden');
+
+  // Wstaw game-style pasek postępu jeśli jeszcze nie istnieje
+  let gameBar = document.getElementById('game-loading-bar-wrap');
+  if (!gameBar) {
+    gameBar = document.createElement('div');
+    gameBar.id = 'game-loading-bar-wrap';
+    gameBar.innerHTML = `
+      <div class="game-bar-label" id="game-bar-label">Analizuję Twoje oceny...</div>
+      <div class="game-bar-track">
+        <div class="game-bar-fill" id="game-bar-fill"></div>
+        <div class="game-bar-shine"></div>
+      </div>
+      <div class="game-bar-percent" id="game-bar-percent">0%</div>
+    `;
+    // Wstaw przed spinnerem lub na początku center-screen
+    const centerScreen = document.querySelector('#screen-4 .screen-inner');
+    if (centerScreen) {
+      // Ukryj domyślny spinner
+      const spinner = centerScreen.querySelector('.spinner');
+      if (spinner) spinner.style.display = 'none';
+      centerScreen.insertBefore(gameBar, centerScreen.firstChild);
+    }
+  } else {
+    // Zresetuj
+    const fill = document.getElementById('game-bar-fill');
+    const pct = document.getElementById('game-bar-percent');
+    if (fill) fill.style.width = '0%';
+    if (pct) pct.textContent = '0%';
+    gameBar.style.display = 'block';
+    const spinner = document.querySelector('#screen-4 .spinner');
+    if (spinner) spinner.style.display = 'none';
+  }
+
+  showScreen(4);
+
+  // Fazy ładowania z komunikatami
+  const phases = [
+    { pct: 15, label: 'Zapisuję odpowiedzi...' },
+    { pct: 35, label: 'Analizuję Twoje oceny...' },
+    { pct: 55, label: 'Generuję wiadomość dla Ciebie...' },
+    { pct: 75, label: 'Prawie gotowe...' },
+    { pct: 90, label: 'Pobieranie globalnego rankingu...' },
+    { pct: 100, label: 'Gotowe! 🎉' },
+  ];
+
+  let phaseIndex = 0;
+  let currentPct = 0;
+  let done = false;
+  const TOTAL_MS = 3000;
+  const startMs = Date.now();
+
+  function setBar(pct, label) {
+    const fill = document.getElementById('game-bar-fill');
+    const pctEl = document.getElementById('game-bar-percent');
+    const labelEl = document.getElementById('game-bar-label');
+    if (fill) fill.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+    if (label && labelEl) labelEl.textContent = label;
+  }
+
+  // Tick co ~80ms
+  const tickInterval = setInterval(() => {
+    if (done) { clearInterval(tickInterval); return; }
+    const elapsed = Date.now() - startMs;
+    const ratio = Math.min(elapsed / TOTAL_MS, 1);
+    // Easing: szybki start, spowalnia pod koniec (ale max 95% bo czeka na serwer)
+    const eased = Math.min(ratio * 95, 95);
+    // Aktualizuj fazę
+    while (phaseIndex < phases.length - 1 && eased >= phases[phaseIndex].pct) {
+      phaseIndex++;
+    }
+    setBar(eased, phases[phaseIndex]?.label || '');
+    if (ratio >= 1) { clearInterval(tickInterval); }
+  }, 80);
+
+  // Uruchom DeepSeek i ranking równolegle — nie czekaj kolejno
+  let deepseekResult = null;
+
+  const deepseekPromise = generateThankYouMessage().then(msg => {
+    deepseekResult = msg;
+  });
+  const rankingPromise = showGlobalRanking();
+
+  // Minimalne opóźnienie 0ms — skończymy gdy oba wrócą LUB po 3s, co nastąpi później
+  const minWait = new Promise(res => setTimeout(res, 100)); // daj czas na render ekranu
+
+  Promise.all([deepseekPromise, rankingPromise, minWait]).then(() => {
+    // Oba skończone — dobij pasek do 100% płynnie
+    done = true;
+    clearInterval(tickInterval);
+    setBar(100, 'Gotowe! 🎉');
+    setTimeout(() => {
+      showScreen(5);
+    }, 400);
+  });
+
+  // Hard-stop po 3s niezależnie od wyniku
+  setTimeout(() => {
+    if (!done) {
+      done = true;
+      clearInterval(tickInterval);
+      setBar(100, 'Gotowe! 🎉');
+      setTimeout(() => {
+        showScreen(5);
+      }, 400);
+    }
+  }, 3000);
 }
 
 async function generateThankYouMessage() {
   const thankYouEl = document.getElementById('thanks-body');
 
-  if (storedAnswers.length === 0) return;
+  if (storedAnswers.length === 0) return null;
 
   // Sprawdź czy jakikolwiek suggestion zawiera tekst
   const hasSuggestions = storedAnswers.some(a => a.suggestion && a.suggestion.trim().length > 0);
@@ -846,7 +953,7 @@ async function generateThankYouMessage() {
     if (thankYouEl) {
       thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
     }
-    return;
+    return null; // brak DeepSeek — nic do zapisania do kolumny K
   }
 
   // Jest co najmniej jeden suggestion - wywołaj DeepSeek
@@ -860,7 +967,6 @@ async function generateThankYouMessage() {
 
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
-    // GAS musi być wdrożony z "Kto ma dostęp: Każdy" i zwracać CORS headers
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
@@ -875,9 +981,11 @@ async function generateThankYouMessage() {
         if (thankYouEl) {
           thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${data.message}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
         }
+        // Zapisz odpowiedź DeepSeek do kolumny K (przy ostatniej odpowiedzi ankietowanego)
+        saveDeepSeekToSheet(data.message);
+        return data.message;
       } else if (data.status === 'error') {
         console.warn('⚠️ GAS zwrócił błąd:', data.message);
-        // Fallback na automatyczną wiadomość
         if (thankYouEl) {
           thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
         }
@@ -892,6 +1000,28 @@ async function generateThankYouMessage() {
       thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
     }
   }
+  return null;
+}
+
+// Wyślij odpowiedź DeepSeek do GAS — zostanie wpisana w kolumnę K ostatniego wiersza ankietowanego
+function saveDeepSeekToSheet(deepseekMessage) {
+  if (!deepseekMessage || !WEBHOOK_URL || storedAnswers.length === 0) return;
+  // Identyfikujemy ankietowanego przez timestamp pierwszej odpowiedzi + imię
+  const firstAnswer = storedAnswers[0];
+  const payload = {
+    action: 'saveDeepSeek',
+    name: userName,
+    first_timestamp: firstAnswer.timestamp,
+    deepseek_message: deepseekMessage
+  };
+  fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload),
+    redirect: 'follow'
+  })
+    .then(() => console.log('✅ DeepSeek zapisany do kolumny K'))
+    .catch(err => console.warn('⚠️ Błąd zapisu DeepSeek do K:', err));
 }
 
 function appendAnswerHistory(payload) {

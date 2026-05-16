@@ -1126,3 +1126,83 @@ body {
 .survey-exit-note {
   display: none !important;
 }
+
+/* =============================================
+   GAME-STYLE LOADING BAR (ekran 4)
+============================================= */
+#game-loading-bar-wrap {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-bar-label {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  letter-spacing: 0.02em;
+  min-height: 1.4em;
+  transition: opacity 0.3s;
+}
+
+.game-bar-track {
+  width: 100%;
+  height: 28px;
+  background: rgba(26, 22, 17, 0.10);
+  border-radius: 14px;
+  border: 2px solid var(--ink);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.game-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f7c948 0%, #ff8c00 60%, #ff4500 100%);
+  border-radius: 12px;
+  transition: width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.5);
+}
+
+.game-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  background: rgba(255,255,255,0.35);
+  border-radius: 3px;
+}
+
+/* animowany blask przesuwający się po pasku */
+.game-bar-shine {
+  position: absolute;
+  top: 0; left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  animation: shine-slide 1.6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shine-slide {
+  0%   { left: -60%; }
+  100% { left: 110%; }
+}
+
+.game-bar-percent {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
