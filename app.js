@@ -23,7 +23,7 @@ const GID = "0"; // ID arkusza (zakładki)
 // - GAS pobiera klucz z właściwych zmiennych i wysyła request do DeepSeek
 // - Odpowiedź wraca do frontend'u jako JSON
 // Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwODQfL0oE-M06BJj_B2X6-QO2H7jmb5ewWtvM46NSDzpAGHXYUQqjDXnpGyQ-WRXsg/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwroYqx3Eak1AxOpNuW6tBX6iC7_ZFvh5-90fgyuPevOz7t7qu2tuf69i1MVerQP9-W/exec";
 
 console.log('🔧 App initialized:');
 console.log('  WEBHOOK_URL:', WEBHOOK_URL);

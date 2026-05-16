@@ -51,7 +51,10 @@ const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa zakładki
 // ⚠️ DEEPSEEK_API_KEY pobierany z Właściwości skryptu (Settings → Project Properties)
 // Nigdy nie umieszczaj klucza hardcoded'em w tym pliku!
 // Aby go ustawić: Ustawienia projektu → Właściwości skryptu → dodaj DEEPSEEK_API_KEY
-const DEEPSEEK_API_KEY = PropertiesService.getScriptProperties().getProperty("DEEPSEEK_API_KEY");
+// WAŻNE: klucz czytany świeżo przy każdym wywołaniu (nie jako globalna stała — byłby zamrożony jako null)
+function getDeepSeekKey() {
+  return PropertiesService.getScriptProperties().getProperty("DEEPSEEK_API_KEY");
+}
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
 // Odpowiada na GET — zwraca ranking globalny gdy action=ranking, inaczej info
@@ -179,6 +182,7 @@ function doPost(e) {
 // Frontend wysyła prompt, GAS wysyła go do DeepSeek i zwraca wynik
 function handleDeepSeek(prompt) {
   try {
+    const DEEPSEEK_API_KEY = getDeepSeekKey();
     if (!DEEPSEEK_API_KEY) {
       console.error("DEEPSEEK_API_KEY nie jest skonfigurowany w Właściwościach skryptu!");
       return ContentService
