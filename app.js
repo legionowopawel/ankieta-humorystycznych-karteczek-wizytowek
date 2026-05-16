@@ -13,18 +13,22 @@ const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
 const SHEET_ID = QUESTIONS_SHEET_ID;
 const GID = "0"; // ID arkusza (zakładki)
 
-// URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi
-// Ten adres jest generowany po wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
+// URL wdrożonego Google Apps Script (Web App), który zapisuje odpowiedzi i obsługuje DeepSeek
+// Adres generowany przy wdrożeniu Apps Script do zapisującego arkusza odpowiedzi.
+// 
+// ⚠️ WAŻNE DLA DEVELOPERÓW:
+// - DEEPSEEK_API_KEY jest przechowywany w GAS (zmienne przechowywane zarezerwowane)
+// - Klucz API NIGDY nie pojawia się w kodzie JavaScript (bezpieczeństwo!)
+// - Frontend wysyła prompt do GAS z action='deepseek'
+// - GAS pobiera klucz z właściwych zmiennych i wysyła request do DeepSeek
+// - Odpowiedź wraca do frontend'u jako JSON
+// Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
 const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwCQLZVlzTXdDywi0qCFAxXse2O6dM3BIcB2jTHTCSY46SCJXVcbtcZi4Ski4EKuktE/exec";
-
-// Klucz API do DeepSeek
-const DEEPSEEK_API_KEY = "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK";
-const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"; // Zakładam standardowy endpoint
 
 console.log('🔧 App initialized:');
 console.log('  WEBHOOK_URL:', WEBHOOK_URL);
-console.log('  DEEPSEEK_API_KEY:', DEEPSEEK_API_KEY !== "TUTAJ_WKLEJ_KLUCZ_DEEPSEEK" ? '✅ Wpisany' : '⚠️ Nie ustawiony');
 console.log('  QUESTIONS_SHEET_ID:', QUESTIONS_SHEET_ID);
+console.log('  ℹ️ DeepSeek API Key jest zarządzany bezpiecznie po stronie GAS (Google Apps Script)');
 
 /* =============================================
    STAN APLIKACJI
@@ -857,6 +861,7 @@ async function generateThankYouMessage() {
 
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
+    // ℹ️ Frontend nie ma dostępu do DEEPSEEK_API_KEY - zawsze jest przechowywany w GAS
     // Uwaga: GAS wymaga wdrożenia z "Kto ma dostęp: Każdy" żeby CORS działał
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',

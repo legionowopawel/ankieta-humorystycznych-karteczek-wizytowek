@@ -1,17 +1,56 @@
 /*
-  Google Apps Script dla zapisu odpowiedzi do Google Sheets.
-  1. Wklej ten kod do edytora Apps Script: https://script.google.com/
-  2. Wdróż jako aplikację sieciową (Web App):
-     - Wykonaj jako: Ja (swoje konto)
-     - Kto ma dostęp: Każdy (Everyone)
-  3. Skopiuj URL wdrożenia do zmiennej WEBHOOK_URL w app.js.
+  Google Apps Script dla zapisu odpowiedzi do Google Sheets i obsługi DeepSeek.
+  
+  ========== INSTRUKCJE DLA PROGRAMISTÓW ==========
+  
+  1. SETUP WSTĘPNY:
+     - Przejdź do: https://script.google.com/
+     - Utwórz nowy projekt lub otwórz istniejący
+     - Wklej ten kod
+  
+  2. KONFIGURACJA DEEPSEEK API KEY (WAŻNE!):
+     - W menu GAS: "Ustawienia projektu" → "Właściwości skryptu"
+     - Kliknij ikonę zamka obok "Właściwości skryptu"
+     - Dodaj nową właściwość:
+       Klucz: DEEPSEEK_API_KEY
+       Wartość: [wklej swój klucz z https://api.deepseek.com]
+     - Zapisz
+     
+     Dlaczego? Ze względów bezpieczeństwa klucz API nigdy nie pojawia się w kodzie JavaScript.
+     GAS pobiera go z bezpiecznych właściwości projektu.
+  
+  3. WDROŻENIE:
+     - Kliknij "Wdróż" → "Nowe wdrożenie"
+     - Typ: "Aplikacja sieciowa"
+     - Wykonaj jako: Ja (twoje konto)
+     - Kto ma dostęp: Każdy (Everyone) — WAŻNE dla CORS!
+     - Skopiuj URL wdrożenia
+     - Wklej URL do app.js w zmiennej WEBHOOK_URL
+  
+  4. TESTOWANIE:
+     - Frontend wysyła GET z ?action=ranking → GAS zwraca ranking
+     - Frontend wysyła POST z action=deepseek → GAS bezpiecznie wywiła DeepSeek
+  
+  ========== ARCHITEKTURA BEZPIECZEŃSTWA ==========
+  
+  ❌ NIEBEZPIECZNE (stare podejście):
+     - app.js miał DEEPSEEK_API_KEY w kodzie
+     - Wszyscy mogą zobaczyć klucz w DevTools
+     - Każdy może nadużyć API
+  
+  ✅ BEZPIECZNE (obecne podejście):
+     - Klucz przechowywany tylko w GAS (właściwości)
+     - Frontend NIGDY nie ma dostępu do klucza
+     - GAS to trusted backend → może wywoływać DeepSeek
+     - Każdy prompt musi być zgodny z logiką biznesową
 */
 
 const ANSWERS_SHEET_ID = "1THZ_Bk8SHWeIz8hBr6a9mV5gGPIBqEcZk_KKDYnEmaQ";
 const SHEET_NAME = "Arkusz1"; // Dostosuj, jeśli inna nazwa zakładki
 
-// Klucz DeepSeek pobierany z Właściwości skryptu (Ustawienia projektu → Właściwości skryptu)
-// Ustaw tam: DEEPSEEK_API_KEY = twój_klucz
+// ⚠️ DEEPSEEK_API_KEY pobierany z Właściwości skryptu (Settings → Project Properties)
+// Nigdy nie umieszczaj klucza hardcoded'em w tym pliku!
+// Aby go ustawić: Ustawienia projektu → Właściwości skryptu → dodaj DEEPSEEK_API_KEY
 const DEEPSEEK_API_KEY = PropertiesService.getScriptProperties().getProperty("DEEPSEEK_API_KEY");
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -136,8 +175,17 @@ function doPost(e) {
 }
 
 // Wywołuje DeepSeek i zwraca wygenerowaną wiadomość
+// ℹ️ Ta funkcja działa po stronie serwera (GAS), dzięki czemu klucz API jest chroniony
+// Frontend wysyła prompt, GAS wysyła go do DeepSeek i zwraca wynik
 function handleDeepSeek(prompt) {
   try {
+    if (!DEEPSEEK_API_KEY) {
+      console.error("DEEPSEEK_API_KEY nie jest skonfigurowany w Właściwościach skryptu!");
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "error", message: "DeepSeek nie skonfigurowany (brak klucza API)" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
     if (!prompt) {
       return ContentService
         .createTextOutput(JSON.stringify({ status: "error", message: "Brak promptu" }))
