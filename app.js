@@ -23,7 +23,7 @@ const GID = "0"; // ID arkusza (zakładki)
 // - GAS pobiera klucz z właściwych zmiennych i wysyła request do DeepSeek
 // - Odpowiedź wraca do frontend'u jako JSON
 // Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyWRv0VrTgYbRmxfF14fsDTtPc9MLlkFm3aBr_X7HSMahvvB6zvf-UTzG3cZ9FzlzFD/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw7E0sWRxXaA_gM9e7xhUKPX6d1qSH2nu7Cu1fNH2HMzDu0HWIZiU3_bs6S7e_tKKIQ/exec";
 
 console.log('🔧 App initialized:');
 console.log('  WEBHOOK_URL:', WEBHOOK_URL);
@@ -948,12 +948,13 @@ async function generateThankYouMessage() {
   const hasSuggestions = storedAnswers.some(a => a.suggestion && a.suggestion.trim().length > 0);
 
   if (!hasSuggestions) {
-    // Brak sugestii - automatyczna, lakoniczna wiadomość bez marnowania tokenów DeepSeek
+    // Brak sugestii - automatyczna wiadomość + ogólny Szwejk bez DeepSeek
     const autoMessage = "Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – świetnie wyczuwasz niuanse humoru, od docenienia trafnego żartu po subtelną rezerwę. Paweł prosił, by przekazać Ci, że Twoje spojrzenie wiele dla niego znaczy i inspiruje go do dalszej pracy z dystansem i uśmiechem.";
+    const szwejkFallback = `A dzielny Wojak Szwejk też to wiedział — i mawiał: <em>„Wie pan, panie oberlejtnant, ja zawsze głosuję uczciwie — raz za, raz przeciw, żeby się nie przemęczać."</em> Tak samo i Ty — z godną podziwu konsekwencją.`;
     if (thankYouEl) {
-      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); line-height:1.7; display:block; margin-top:10px; font-style:italic;">${szwejkFallback}</span>`;
     }
-    return null; // brak DeepSeek — nic do zapisania do kolumny K
+    return null;
   }
 
   // Jest co najmniej jeden suggestion - wywołaj DeepSeek
@@ -963,7 +964,13 @@ async function generateThankYouMessage() {
     return `Q${idx + 1}: "${a.question_text}" → ${rating}${a.suggestion ? ` (komentarz: ${a.suggestion})` : ''}`;
   }).join('\n');
 
-  const prompt = `Użytkownik (${userName}) właśnie wypełnił ankietę oceniającą moje rysunki humorystyczne. Oto jego odpowiedzi:\n\n${surveyContext}\n\nNa podstawie tych ocen i komentarzy: podziękuj mu serdecznie, pochwal jego wgląd w humor, scharakteryzuj jego styl oceniania, i daj mu ciepłą, osobistą wiadomość od Pawła. Bądź krótki (2-3 zdania), ale szczere i ze smakiem.`;
+  // Zbierz tylko komentarze tekstowe
+  const suggestions = storedAnswers
+    .filter(a => a.suggestion && a.suggestion.trim().length > 0)
+    .map((a, i) => `- "${a.suggestion.trim()}"`)
+    .join('\n');
+
+  const prompt = `Użytkownik (${userName}) wypełnił ankietę oceniającą rysunki humorystyczne. Oto jego odpowiedzi i komentarze:\n\n${surveyContext}\n\nNapisz dwie rzeczy — oddziel je znacznikiem |||:\n\n1. PODZIĘKOWANIE (2 zdania): Podziękuj mu ciepło od Pawła, pochwal wgląd w humor, nawiąż do jego komentarzy. Bądź szczery i ze smakiem.\n\n2. SZWEJK (3–4 zdania): Napisz jako narrator, który mówi: "A dzielny Wojak Szwejk też o tym wspominał — bo kiedy [tu nawiąż żartobliwie do tematu komentarza ankietowanego], opowiadał taką historię: [tu wstaw autentyczną lub stylizowaną anegdotę Szwejkową pasującą klimatem do komentarza]." Zakończ puentą Szwejka w cudzysłowie.\n\nFormat: PODZIĘKOWANIE|||SZWEJK\nBez żadnych innych znaczników, bez markdown.`;
 
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
@@ -978,8 +985,18 @@ async function generateThankYouMessage() {
       const data = await response.json();
       if (data.status === 'ok' && data.message) {
         console.log('✅ DeepSeek response:\n' + data.message);
+
+        // Rozdziel podziękowanie i Szwejka
+        const parts = data.message.split('|||');
+        const thankPart = (parts[0] || data.message).trim();
+        const szwejkPart = (parts[1] || '').trim();
+
         if (thankYouEl) {
-          thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${data.message}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+          thankYouEl.innerHTML =
+            `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${thankPart}</em>` +
+            (szwejkPart
+              ? `<br><br><span style="font-size:0.88rem; color:var(--ink-muted); line-height:1.75; display:block; margin-top:10px; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 ${szwejkPart}</span>`
+              : '');
         }
         // Zapisz odpowiedź DeepSeek do kolumny K (przy ostatniej odpowiedzi ankietowanego)
         saveDeepSeekToSheet(data.message);
@@ -987,7 +1004,7 @@ async function generateThankYouMessage() {
       } else if (data.status === 'error') {
         console.warn('⚠️ GAS zwrócił błąd:', data.message);
         if (thankYouEl) {
-          thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+          thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Ja zawsze mówię prawdę, panie oberlejtnant — szczególnie wtedy, gdy nikt nie pyta."</em></span>`;
         }
       }
     } else {
@@ -997,7 +1014,7 @@ async function generateThankYouMessage() {
     // DeepSeek jest opcjonalny — błąd nie blokuje wyświetlenia wyników
     console.warn('⚠️ Nie udało się wygenerować wiadomości DeepSeek (sprawdź wdrożenie GAS):', err.message);
     if (thankYouEl) {
-      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Każda ankieta to jak wizyta u doktora — człowiek nie wie, co mu znajdą, ale wychodzi spokojniejszy."</em></span>`;
     }
   }
   return null;

@@ -262,7 +262,7 @@ function handleDeepSeek(prompt) {
       payload: JSON.stringify({
         model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 300
+        max_tokens: 500
       }),
       muteHttpExceptions: true
     });
