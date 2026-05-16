@@ -51,6 +51,12 @@ body {
   padding-top: 60px;
 }
 
+/* Ekrany z paskiem postępu nie potrzebują dodatkowego paddingu */
+#screen-2 .screen-inner,
+#screen-3 .screen-inner {
+  padding-top: 8px;
+}
+
 .screen.active {
   display: flex;
   justify-content: center;
@@ -359,8 +365,8 @@ body {
   gap: 12px;
   padding-bottom: 12px;
   padding-top: 0;
-    margin-bottom: 0;
-  margin-top: -12px;
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .progress-bar-track {
@@ -548,18 +554,18 @@ body {
 ============================================= */
 .rating-buttons {
   display: flex;
-    flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-bottom: 16px;
   justify-content: stretch;
 }
 
 .btn-rate {
   flex: 1;
-  min-height: 56px;
-  padding: 12px 10px;
+  min-height: 52px;
+  padding: 10px 6px;
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #fff;
   border: none;
@@ -569,10 +575,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-  min-width: 100px;
+  min-width: 0;
 }
 
 .btn-rate:active {
@@ -826,9 +832,9 @@ body {
 }
 
 .thanks-subtitle {
-  font-size: 0.45em;
-  font-weight: 600;
-  opacity: 0.8;
+  font-size: 0.35em;
+  font-weight: 400;
+  opacity: 0.7;
 }
 .thanks-body {
   font-size: 1rem;

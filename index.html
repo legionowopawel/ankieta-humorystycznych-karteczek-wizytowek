@@ -17,9 +17,10 @@
 
 <body>
   <canvas id="dragonCanvas"></canvas>
+
+  <!-- GÓRNY PASEK: Wstecz + kursory -->
   <div id="cursorBar">
     <button class="btn-back-top" id="back-btn-top">← Wstecz</button>
-    <span class="cbar-label">🖱️ Wskaźnik myszy</span>
     <button class="cbar-btn active" data-cursor="none" id="btn-none">
       <span class="cbar-icon">🖱️</span>
       <span class="cbar-name">Normalna</span>
@@ -89,7 +90,6 @@
       <div class="question-text" id="question-text-a"></div>
       <div class="image-wrap" id="image-wrap-a">
         <img id="image-a" src="" alt="Obrazek A" />
-
       </div>
       <p class="tap-hint">
         <span class="tap-icon">👆</span>
@@ -109,7 +109,6 @@
       </div>
       <div class="image-wrap swipeable" id="image-wrap-b">
         <img id="image-b" src="" alt="Obrazek B" />
-
         <div class="swipe-indicator swipe-right-hint" id="swipe-right-hint">👍</div>
         <div class="swipe-indicator swipe-left-hint" id="swipe-left-hint">👎</div>
       </div>
@@ -118,11 +117,13 @@
         <span>← przesuń aby odrzucić</span>
         <span>przesuń aby wybrać →</span>
       </div>
+      <!-- Sugestia PONAD przyciskami oceny -->
       <div class="suggestion-wrap">
         <label for="suggestion-input" class="suggestion-label">Napisz sugestię (opcjonalnie)</label>
         <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Twój komentarz..."></textarea>
         <div class="char-counter"><span id="char-count">0</span>/1000</div>
       </div>
+      <!-- Przyciski oceny w jednym rzędzie -->
       <div class="rating-buttons">
         <button class="btn-rate btn-like" data-answer="podoba mi się" data-method="button">
           <span class="btn-icon">🟢</span> Podoba
@@ -134,6 +135,7 @@
           <span class="btn-icon">🔴</span> Zdecydowanie nie
         </button>
       </div>
+      <button class="btn-back" id="back-btn-3">← Wstecz</button>
     </div>
   </div>
 
@@ -152,11 +154,12 @@
     <div class="screen-inner center-screen thanks-screen">
       <div class="thanks-icon">🌍</div>
       <h2 class="thanks-title">Dziękuję<br><span class="thanks-subtitle">za wypełnienie</span></h2>
-      <p class="thanks-body">Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍</p>
+      <p class="thanks-body" id="thanks-body">Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍</p>
       <div class="results-panel">
         <h3 class="results-heading">Aktualne wyniki</h3>
         <div id="results-container" class="results-container"></div>
-      </div> <button class="btn-primary" id="download-btn">Ściągnij wyniki jako TXT</button>
+      </div>
+      <button class="btn-primary" id="download-btn">Ściągnij wyniki jako TXT</button>
       <p class="thanks-sig">— Paweł</p>
     </div>
   </div>
@@ -172,6 +175,7 @@
   <script src="Efekty_html/fairy_dust.js"></script>
   <script src="Efekty_html/clock_follower.js"></script>
   <script src="Efekty_html/elastic_string.js"></script>
+
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox" onclick="closeLightbox()">
     <div class="lightbox-inner" onclick="event.stopPropagation()">

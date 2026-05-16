@@ -65,7 +65,7 @@ const nameError = document.getElementById("name-error");
 const genderSelect = document.getElementById("gender-select");
 const anonymousBtn = document.getElementById("anonymous-btn");
 const startBtn = document.getElementById("start-btn");
-const backBtn = document.getElementById("back-btn");
+const backBtn = document.getElementById("back-btn-3"); // przycisk wstecz na ekranie 3
 const backBtnTop = document.getElementById("back-btn-top");
 const cursorToolbar = document.getElementById("cursorBar");
 const cursorCanvas = document.getElementById("dragonCanvas");
@@ -591,8 +591,8 @@ screens[2].addEventListener("click", () => {
 });
 
 backBtn?.addEventListener("click", (e) => {
-  e.stopPropagation(); // Prevent triggering screen click
-  showScreen(1);
+  e.stopPropagation();
+  showScreen(2);
 });
 
 backBtnTop?.addEventListener("click", () => {
@@ -610,9 +610,7 @@ backBtnTop?.addEventListener("click", () => {
   }
 });
 
-document.getElementById("back-btn-3")?.addEventListener("click", () => {
-  showScreen(2);
-});
+// back-btn-3 jest obsługiwany przez backBtn powyżej
 
 /* =============================================
    EKRAN 3 — przyciski
@@ -835,17 +833,18 @@ function goNext() {
 }
 
 async function generateThankYouMessage() {
+  const thankYouEl = document.getElementById('thanks-body');
+
   if (storedAnswers.length === 0) return;
 
   // Sprawdź czy jakikolwiek suggestion zawiera tekst
   const hasSuggestions = storedAnswers.some(a => a.suggestion && a.suggestion.trim().length > 0);
 
   if (!hasSuggestions) {
-    // Brak sugestii - automatyczna, lakoniczna wiadomość
+    // Brak sugestii - automatyczna, lakoniczna wiadomość bez marnowania tokenów DeepSeek
     const autoMessage = "Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – świetnie wyczuwasz niuanse humoru, od docenienia trafnego żartu po subtelną rezerwę. Paweł prosił, by przekazać Ci, że Twoje spojrzenie wiele dla niego znaczy i inspiruje go do dalszej pracy z dystansem i uśmiechem.";
-    const thankYouEl = document.querySelector('.thanks-body');
     if (thankYouEl) {
-      thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
     }
     return;
   }
@@ -861,8 +860,7 @@ async function generateThankYouMessage() {
 
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
-    // ℹ️ Frontend nie ma dostępu do DEEPSEEK_API_KEY - zawsze jest przechowywany w GAS
-    // Uwaga: GAS wymaga wdrożenia z "Kto ma dostęp: Każdy" żeby CORS działał
+    // GAS musi być wdrożony z "Kto ma dostęp: Każdy" i zwracać CORS headers
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
@@ -874,13 +872,15 @@ async function generateThankYouMessage() {
       const data = await response.json();
       if (data.status === 'ok' && data.message) {
         console.log('✅ DeepSeek response:\n' + data.message);
-        const thankYouEl = document.querySelector('.thanks-body');
         if (thankYouEl) {
-          thankYouEl.innerHTML = `<em style="font-size:0.95rem; line-height:1.6;">${data.message}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+          thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${data.message}</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
         }
       } else if (data.status === 'error') {
         console.warn('⚠️ GAS zwrócił błąd:', data.message);
-        // Nie wyświetlaj błędu użytkownikowi — zostaje domyślny tekst
+        // Fallback na automatyczną wiadomość
+        if (thankYouEl) {
+          thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+        }
       }
     } else {
       console.warn('⚠️ DeepSeek via GAS error:', response.status);
@@ -888,6 +888,9 @@ async function generateThankYouMessage() {
   } catch (err) {
     // DeepSeek jest opcjonalny — błąd nie blokuje wyświetlenia wyników
     console.warn('⚠️ Nie udało się wygenerować wiadomości DeepSeek (sprawdź wdrożenie GAS):', err.message);
+    if (thankYouEl) {
+      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br>Dzięki Tobie świat jest lepszy o 2,5%&nbsp;🌍`;
+    }
   }
 }
 
@@ -957,6 +960,7 @@ async function showGlobalRanking() {
 }
 
 function renderRanking(answers) {
+  // Zbuduj mapę wszystkich obrazków z odpowiedzi
   const grouped = new Map();
 
   answers.forEach(item => {
@@ -977,14 +981,30 @@ function renderRanking(answers) {
     else if (ans === 'zdecydowanie mi się nie podoba') row.strongNo += 1;
   });
 
+  // Uzupełnij o pytania które nie mają jeszcze głosów (wszystkie załadowane pytania)
+  questions.forEach(q => {
+    if (q.obrazek_b && !grouped.has(q.obrazek_b)) {
+      grouped.set(q.obrazek_b, {
+        image_b: q.obrazek_b,
+        question_text: q.pytanie,
+        total: 0, yes: 0, no: 0, strongNo: 0
+      });
+    }
+  });
+
   const results = Array.from(grouped.values()).map(row => {
     const positiveRate = row.total ? (row.yes / row.total) * 100 : 0;
-    const answerLabel = row.yes >= row.no + row.strongNo ? 'Podoba się'
+    const answerLabel = row.total === 0 ? 'Brak głosów'
+      : row.yes >= row.no + row.strongNo ? 'Podoba się'
       : row.no >= row.strongNo ? 'Nie podoba się' : 'Zdecydowanie nie';
     return { ...row, positiveRate, answerLabel };
   });
 
-  results.sort((a, b) => b.positiveRate - a.positiveRate);
+  // Sortuj od najlepszego do najgorszego; przy równej liczbie głosów — alfabetycznie
+  results.sort((a, b) => {
+    if (b.positiveRate !== a.positiveRate) return b.positiveRate - a.positiveRate;
+    return (a.question_text || a.image_b || '').localeCompare(b.question_text || b.image_b || '');
+  });
 
   if (results.length === 0) {
     resultsContainer.innerHTML = '<p class="results-empty">Brak danych do wyświetlenia.</p>';
@@ -996,18 +1016,22 @@ function renderRanking(answers) {
     const nextRate = index + 1 < results.length ? results[index + 1].positiveRate : 0;
     const advantage = index === 0 && results.length > 1
       ? ` · ${Math.max(0, item.positiveRate - nextRate).toFixed(0)} pkt przewagi` : '';
+    const statsText = item.total > 0
+      ? `👍 ${item.positiveRate.toFixed(0)}%${advantage}`
+      : '—';
+    // Miniatura: próbuj PNG, fallback JPG, fallback ramka z wideo
+    const thumbHtml = `
+      <img src="images/${item.image_b}.png?v=${bust}" alt="Miniatura"
+           onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />`;
     return `
-      <div class="result-row${index === 0 ? ' result-top' : ''}"
+      <div class="result-row${index === 0 && item.total > 0 ? ' result-top' : ''}"
            onclick="openLightbox('${item.image_b}')" style="cursor:pointer" title="Kliknij aby zobaczyć obrazek">
         <div class="result-rank">${index + 1}</div>
-        <div class="result-thumb">
-          <img src="images/${item.image_b}.png?v=${bust}" alt="Miniatura"
-               onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />
-        </div>
+        <div class="result-thumb">${thumbHtml}</div>
         <div class="result-info">
           <div class="result-title">${item.question_text || item.image_b}</div>
           <div class="result-answer">${item.answerLabel}</div>
-          <div class="result-stats">👍 ${item.positiveRate.toFixed(0)}%${advantage}</div>
+          <div class="result-stats">${statsText}</div>
           <div class="result-count">Głosów: ${item.total}</div>
         </div>
         <div class="result-zoom">🔍</div>
@@ -1016,7 +1040,7 @@ function renderRanking(answers) {
 
   resultsContainer.innerHTML = `
     <div class="results-header">
-      <div>🌍 Ranking globalny</div>
+      <div>🌍 Ranking globalny (${results.length} obrazków)</div>
       <div>% „tak"</div>
     </div>
     <div class="results-list">${rowsHtml}</div>
