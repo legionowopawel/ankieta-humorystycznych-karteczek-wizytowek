@@ -908,6 +908,58 @@ body {
   color: #fff;
 }
 
+/* Sekcja Skondensowanych inspiracji */
+.inspirations-panel {
+  width: 100%;
+  margin: 20px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.15), rgba(212, 168, 83, 0.05));
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.inspirations-heading {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--accent);
+}
+
+.inspirations-preview {
+  background: rgba(26, 22, 17, 0.05);
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+  font-size: 0.95rem;
+  max-height: 150px;
+  overflow: hidden;
+  position: relative;
+}
+
+.inspirations-preview::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(to bottom, transparent, rgba(26, 22, 17, 0.05));
+}
+
+.inspirations-full {
+  background: rgba(26, 22, 17, 0.05);
+  padding: 14px;
+  border-radius: 8px;
+  line-height: 1.6;
+  color: var(--ink);
+  font-size: 0.95rem;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
 .results-container {
   display: flex;
   flex-direction: column;

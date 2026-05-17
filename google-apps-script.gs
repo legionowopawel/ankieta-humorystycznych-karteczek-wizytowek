@@ -136,6 +136,11 @@ function doPost(e) {
       return handleSaveDeepSeek(body);
     }
 
+    // Jeśli action=saveInspirations — zapisz inspiracje do kolumny L ostatniego wiersza ankietowanego
+    if (body.action === "saveInspirations") {
+      return handleSaveInspirations(body);
+    }
+
     // W przeciwnym razie — zapisz odpowiedź do arkusza
     const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
@@ -153,7 +158,8 @@ function doPost(e) {
         "Odpowiedź",
         "Metoda",
         "Sugestia",
-        "DeepSeek - wiadomość"
+        "DeepSeek - wiadomość",
+        "Inspiracje - 20 konceptów"
       ]);
     }
 
@@ -169,7 +175,8 @@ function doPost(e) {
       body.answer        || "",
       body.answer_method || "",
       body.suggestion    || "",
-      "" // kolumna K — wypełniana później przez saveDeepSeek
+      "", // kolumna K — wypełniana później przez saveDeepSeek
+      ""  // kolumna L — wypełniana później przez saveInspirations
     ]);
 
     return ContentService
@@ -234,6 +241,55 @@ function handleSaveDeepSeek(body) {
   }
 }
 
+// Zapisuje inspiracje do kolumny L при ostatnim wierszu danego ankietowanego
+function handleSaveInspirations(body) {
+  try {
+    const name = body.name || "";
+    const firstTimestamp = body.first_timestamp || "";
+    const inspirationsText = body.inspirations_text || "";
+
+    if (!inspirationsText) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "error", message: "Brak inspiracji" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const spreadsheet = SpreadsheetApp.openById(ANSWERS_SHEET_ID);
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+
+    // Szukamy ostatniego wiersza pasującego do tego ankietowanego (po imieniu)
+    // Kolumna C (index 2) = Imię
+    let lastMatchRow = -1;
+    for (let i = 1; i < data.length; i++) {
+      const rowName = String(data[i][2] || "").trim();
+      if (rowName === name.trim()) {
+        lastMatchRow = i + 1; // 1-based row index
+      }
+    }
+
+    if (lastMatchRow === -1) {
+      // Fallback: wpisz w ostatni wiersz arkusza
+      lastMatchRow = sheet.getLastRow();
+    }
+
+    // Wpisz inspiracje do kolumny L (12) ostatniego wiersza ankietowanego
+    sheet.getRange(lastMatchRow, 12).setValue(inspirationsText);
+
+    console.log("✅ Inspiracje zapisane do wiersza " + lastMatchRow + ", kolumna L");
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "ok", row: lastMatchRow }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    console.error("handleSaveInspirations error:", error);
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // Wywołuje DeepSeek i zwraca wygenerowaną wiadomość
 // ℹ️ Ta funkcja działa po stronie serwera (GAS), dzięki czemu klucz API jest chroniony
 // Frontend wysyła prompt, GAS wysyła go do DeepSeek i zwraca wynik
@@ -262,7 +318,7 @@ function handleDeepSeek(prompt) {
       payload: JSON.stringify({
         model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 500
+        max_tokens: 2000
       }),
       muteHttpExceptions: true
     });

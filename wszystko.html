@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Wszystkie multimedia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #F5F2EC;
+      --surface: #FFFFFF;
+      --ink: #1A1611;
+      --accent: #D4A853;
+      --radius: 16px;
+      --shadow-lg: 0 12px 48px rgba(26, 22, 17, 0.15);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    body {
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .header-back {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .header-back:hover {
+      opacity: 0.85;
+    }
+
+    .gallery-loading {
+      text-align: center;
+      padding: 40px 20px;
+      font-size: 1.1rem;
+      color: var(--ink);
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    /* Mobile: 2 kolumny */
+    @media (max-width: 600px) {
+      .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .header h1 {
+        font-size: 1.4rem;
+      }
+    }
+
+    /* Tablet: 3 kolumny */
+    @media (min-width: 601px) and (max-width: 900px) {
+      .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+    }
+
+    /* Desktop: 4+ kolumny */
+    @media (min-width: 901px) {
+      .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 16px;
+      }
+    }
+
+    .gallery-item {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: var(--surface);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gallery-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 56px rgba(26, 22, 17, 0.2);
+    }
+
+    .gallery-item img,
+    .gallery-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gallery-item-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(26, 22, 17, 0.7);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Fullscreen Modal */
+    .fullscreen-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .fullscreen-modal.active {
+      display: flex;
+    }
+
+    .fullscreen-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      width: 100%;
+      height: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fullscreen-content img,
+    .fullscreen-content video {
+      max-width: 100%;
+      max-height: 90vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .fullscreen-close {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: white;
+      color: black;
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      z-index: 10000;
+    }
+
+    .fullscreen-close:hover {
+      background: #f0f0f0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--ink);
+    }
+
+    .empty-state h2 {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      font-size: 1rem;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>📸 Wszystkie multimedia</h1>
+    <button class="header-back" onclick="window.history.back()">← Wróć</button>
+  </div>
+
+  <div class="gallery-loading" id="loading">Ładowanie galerii...</div>
+  <div class="gallery-grid" id="gallery"></div>
+  <div class="empty-state" id="empty" style="display:none;">
+    <h2>Brak multimediów</h2>
+    <p>Folder images jest pusty lub niedostępny.</p>
+  </div>
+
+  <!-- Fullscreen Modal -->
+  <div class="fullscreen-modal" id="fullscreen-modal">
+    <button class="fullscreen-close" onclick="closeFullscreen()">✕</button>
+    <div class="fullscreen-content" id="fullscreen-content"></div>
+  </div>
+
+  <script>
+    const EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4'];
+    const IMAGES_PATH = 'images/';
+
+    async function loadGallery() {
+      try {
+        const files = await discoverFiles();
+        
+        if (files.length === 0) {
+          showEmpty();
+          return;
+        }
+
+        // Sortuj alfabetycznie
+        files.sort((a, b) => a.localeCompare(b));
+
+        renderGallery(files);
+      } catch (error) {
+        console.error('Błąd ładowania galerii:', error);
+        showEmpty();
+      }
+    }
+
+    // Spróbuj pobrać listę plików
+    async function discoverFiles() {
+      const files = new Set();
+
+      // Metoda 1: Spróbuj API directory listing
+      try {
+        const response = await fetch(IMAGES_PATH, { method: 'HEAD' });
+        if (response.ok) {
+          const text = await fetch(IMAGES_PATH).then(r => r.text());
+          // Szukaj linków z rozszerzeniami
+          const regex = /href=["']([^"']+\.(?:png|jpg|jpeg|webp|gif|mp4))/gi;
+          let match;
+          while ((match = regex.exec(text)) !== null) {
+            files.add(match[1]);
+          }
+        }
+      } catch (e) {
+        console.warn('Directory listing niedostępny, fallback na brute-force');
+      }
+
+      // Metoda 2: Brute-force szczególne rozszerzenia
+      // Najpierw spróbuj znaleźć wszystkie potencjalne pliki
+      // Będziemy testować znane nazwy plikowych
+      if (files.size === 0) {
+        // Próbujesz znaleźć wszystkie pliki poprzez fetch HEAD
+        for (const ext of EXTENSIONS) {
+          // Szukaj plików z numerami 1a, 1b, 2a, 2b, itd, plus ogólne nazwy
+          const patterns = [];
+          
+          // Numery 1-20
+          for (let i = 1; i <= 20; i++) {
+            patterns.push(`${i}a.${ext}`, `${i}b.${ext}`);
+          }
+          
+          // Kilka innych potencjalnych nazw
+          patterns.push(`1.${ext}`, `welcome.${ext}`, `start.${ext}`);
+
+          for (const filename of patterns) {
+            const url = `${IMAGES_PATH}${filename}?v=${Date.now()}`;
+            try {
+              const response = await fetch(url, { method: 'HEAD' });
+              if (response.ok) {
+                files.add(filename);
+              }
+            } catch (e) {
+              // Skip — plik nie istnieje
+            }
+          }
+        }
+      }
+
+      return Array.from(files);
+    }
+
+    function renderGallery(files) {
+      const gallery = document.getElementById('gallery');
+      const loading = document.getElementById('loading');
+      
+      loading.style.display = 'none';
+      gallery.innerHTML = '';
+
+      files.forEach(filename => {
+        const extension = filename.split('.').pop().toLowerCase();
+        const isVideo = ['mp4', 'webm', 'mov'].includes(extension);
+        
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        item.onclick = () => openFullscreen(filename, isVideo);
+
+        if (isVideo) {
+          const video = document.createElement('video');
+          video.src = `${IMAGES_PATH}${filename}`;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'cover';
+          video.style.display = 'block';
+          item.appendChild(video);
+          
+          const badge = document.createElement('div');
+          badge.className = 'gallery-item-badge';
+          badge.textContent = '🎬 VIDEO';
+          item.appendChild(badge);
+        } else {
+          const img = document.createElement('img');
+          img.src = `${IMAGES_PATH}${filename}`;
+          img.alt = filename;
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+          img.style.display = 'block';
+          item.appendChild(img);
+        }
+
+        gallery.appendChild(item);
+      });
+    }
+
+    function openFullscreen(filename, isVideo) {
+      const modal = document.getElementById('fullscreen-modal');
+      const content = document.getElementById('fullscreen-content');
+      
+      content.innerHTML = '';
+
+      if (isVideo) {
+        const video = document.createElement('video');
+        video.src = `${IMAGES_PATH}${filename}`;
+        video.controls = true;
+        video.autoplay = true;
+        video.style.maxWidth = '100%';
+        video.style.maxHeight = '90vh';
+        content.appendChild(video);
+      } else {
+        const img = document.createElement('img');
+        img.src = `${IMAGES_PATH}${filename}`;
+        img.alt = filename;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '90vh';
+        content.appendChild(img);
+      }
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeFullscreen() {
+      const modal = document.getElementById('fullscreen-modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+
+    function showEmpty() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('gallery').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+    }
+
+    // Obsługa ESC do zamknięcia fullscreen
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeFullscreen();
+      }
+    });
+
+    // Załaduj galerię gdy strona się wczyta
+    window.addEventListener('load', loadGallery);
+  </script>
+
+</body>
+</html>

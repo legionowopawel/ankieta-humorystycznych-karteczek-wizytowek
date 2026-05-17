@@ -1,0 +1,17 @@
+Popraw następujące rzeczy w projekcie ankiety:
+
+1. **_env / sekrety** — plik _env z kluczem DEEPSEEK_API_KEY został przypadkowo udostępniony poza repo. Klucz należy unieważnić na platform.deepseek.com i wygenerować nowy. Upewnij się, że _env jest w .gitignore i nigdy nie trafia do żadnego publicznego miejsca (chat, email, Slack).
+
+2. **handleSaveDeepSeek — identyfikacja po samym imieniu** — funkcja w GAS szuka ostatniego wiersza ankietowanego wyłącznie po kolumnie `name`. Jeśli dwóch użytkowników poda to samo imię w tej samej sesji, drugi nadpisze wynik DeepSeek pierwszemu. Należy dodać `first_timestamp` jako drugi warunek wyszukiwania — jest już przesyłany w body, ale nieużywany w pętli.
+
+3. **Endpoint GET ?action=ranking bez autoryzacji** — zwraca wszystkie odpowiedzi z imionami ankietowanych każdemu, kto zna URL GAS-a. Dodać przynajmniej prosty token w nagłówku lub parametrze zapytania weryfikowany po stronie GAS.
+
+4. **Kursory nieaktywne na mobile** — przyciski w #cursorBar (smok, wąż, fairy dust itd.) nie mają żadnego efektu na urządzeniach dotykowych, bo kursor tam nie istnieje. Wykryć `ontouchstart` i ukryć lub zablokować cały cursorBar na touch devices.
+
+5. **Brak opcji pominięcia pytania** — użytkownik musi wybrać jedną z trzech ocen, nie ma wyjścia "pomiń / nie mam zdania". Rozważyć dodanie czwartego przycisku neutralnego.
+
+6. **btn-back-top bez zdefiniowanej logiki nawigacji** — przycisk Wstecz w górnym pasku (#back-btn-top) istnieje w HTML, ale nie wiadomo, do którego ekranu cofa w każdym możliwym stanie aplikacji. Sprawdzić i ujednoznacznić obsługę w app.js.
+
+7. **Retry po błędzie sieci (ekran 4)** — przycisk #retry-btn jest obecny w HTML, ale nie wiadomo czy po kliknięciu wznawia wysyłkę z zachowanymi danymi pytania, czy cofa do ekranu 3. Upewnić się, że dane odpowiedzi są buforowane i retry nie wymaga od użytkownika ponownego wypełnienia.
+
+8. **max_tokens: 500 w handleDeepSeek** — to bardzo mało jeśli generowana wiadomość ma być spersonalizowanym podsumowaniem. Rozważyć zwiększenie do 1000–1500 zależnie od długości oczekiwanej odpowiedzi.

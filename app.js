@@ -978,21 +978,26 @@ function showLoadingScreen() {
 
   // Uruchom DeepSeek i ranking równolegle — nie czekaj kolejno
   let deepseekResult = null;
+  let inspirationsResult = null;
 
   const deepseekPromise = generateThankYouMessage().then(msg => {
     deepseekResult = msg;
+  });
+  const inspirationsPromise = generateInspirations().then(insp => {
+    inspirationsResult = insp;
   });
   const rankingPromise = showGlobalRanking();
 
   // Minimalne opóźnienie 0ms — skończymy gdy oba wrócą LUB po 3s, co nastąpi później
   const minWait = new Promise(res => setTimeout(res, 100)); // daj czas na render ekranu
 
-  Promise.all([deepseekPromise, rankingPromise, minWait]).then(() => {
+  Promise.all([deepseekPromise, inspirationsPromise, rankingPromise, minWait]).then(() => {
     // Oba skończone — dobij pasek do 100% płynnie
     done = true;
     clearInterval(tickInterval);
     setBar(100, 'Gotowe! 🎉');
     setTimeout(() => {
+      displayInspirations(inspirationsResult);
       showScreen(5);
     }, 400);
   });
@@ -1004,6 +1009,7 @@ function showLoadingScreen() {
       clearInterval(tickInterval);
       setBar(100, 'Gotowe! 🎉');
       setTimeout(() => {
+        displayInspirations(inspirationsResult);
         showScreen(5);
       }, 400);
     }
@@ -1117,6 +1123,140 @@ function saveDeepSeekToSheet(deepseekMessage) {
   })
     .then(() => console.log('✅ DeepSeek zapisany do kolumny K'))
     .catch(err => console.warn('⚠️ Błąd zapisu DeepSeek do K:', err));
+}
+
+/* =============================================
+   GENEROWANIE SKONDENSOWANYCH INSPIRACJI
+============================================= */
+async function generateInspirations() {
+  if (storedAnswers.length === 0) return null;
+
+  // Zbierz wszystkie komentarze i oceny
+  const suggestions = storedAnswers
+    .filter(a => a.suggestion && a.suggestion.trim().length > 0)
+    .map((a, i) => `${i + 1}. "${a.suggestion}"`)
+    .join('\n');
+
+  if (!suggestions || suggestions.trim().length === 0) {
+    return null; // Brak sugestii, brak inspiracji
+  }
+
+  const surveyContext = storedAnswers.map((a, idx) => {
+    const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
+      a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
+    return `- "${a.question_text}" → ${rating}`;
+  }).join('\n');
+
+  const prompt = `Użytkownik "${userName}" wypełnił ankietę humorystyczną i pozostawił poniższe komentarze-sugestie:
+
+KOMENTARZE UŻYTKOWNIKA:
+${suggestions}
+
+PYTANIA Z ANKIETY (kontekst):
+${surveyContext}
+
+Twoim zadaniem jest ODKRYCIE 20 ORYGINALNYCH, NIEPOWATARZALNYCH INSPIRACJI NA ŻARTY I HUMOR na podstawie tych komentarzy. 
+
+INSTRUKCJE:
+1. Każda inspiracja powinna być KRÓTKA (1–2 linijki), ZWIĘZŁA, ZASKAKUJĄCA
+2. Odkryj NOWE WYMIARY HUMORU, NIEOCZEKIWANE POŁĄCZENIA, ABSURDALNE PERMUTACJE
+3. Będą to raczej HACZYKI, POINTY, IRÓNIE, nie pełne żarty
+4. Każda inspiracja powinna być na NOWEJ LINII, numerowana: 1. ...  2. ...  3. ... itd.
+5. Punckt powinien być TREŚCIWY, bliski stylu absurdu, dystansu, głębokich prawd o człowieku
+6. Każda kolejna inspiracja powinna POSUWAĆ DALEJ granicę absurdu
+7. Jeśli się da — nawiąż do polskiej rzeczywistości, społeczeństwa, anomalii
+8. Bądź BEZPIECZNY ale ODWAŻNY — nie bój się drwiny z powszechnych zjawisk
+
+WYJŚCIE: zwróć DOKŁADNIE 20 numerowanych punktów, BEZ nagłówka, BEZ żadnych dodatkowych wyjaśnień, TYLKO inspiracje.`;
+
+  try {
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'deepseek', prompt }),
+      redirect: 'follow'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.status === 'ok' && data.message) {
+        console.log('✅ Inspiracje wygenerowane:\n' + data.message);
+        // Zapisz inspiracje do kolumny L
+        saveInspirationToSheet(data.message);
+        return data.message;
+      } else {
+        console.warn('⚠️ DeepSeek zwrócił błąd inspiracji:', data.message);
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Nie udało się wygenerować inspiracji:', err.message);
+  }
+  return null;
+}
+
+// Wyświetl inspiracje na ekranie 5
+function displayInspirations(inspirationsText) {
+  const panel = document.getElementById('inspirations-panel');
+  const preview = document.getElementById('inspirations-preview');
+  const full = document.getElementById('inspirations-full');
+  const expandBtn = document.getElementById('inspirations-expand-btn');
+
+  if (!inspirationsText || inspirationsText.trim().length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  // Wyświetl
+  panel.style.display = 'block';
+
+  // Pierwsze 3 inspiracje dla preview
+  const lines = inspirationsText.split('\n').filter(l => l.trim().length > 0);
+  const previewLines = lines.slice(0, 3);
+  const fullText = inspirationsText;
+
+  preview.innerHTML = previewLines
+    .map(line => `<div>${line}</div>`)
+    .join('');
+
+  // Pełna zawartość w ukrytej sekcji
+  full.innerHTML = fullText
+    .split('\n')
+    .filter(l => l.trim().length > 0)
+    .map(line => `<div>${line}</div>`)
+    .join('');
+
+  // Przycisk "czytaj dalej" jeśli jest więcej linii
+  if (lines.length > 3) {
+    expandBtn.style.display = 'block';
+    expandBtn.onclick = () => {
+      preview.style.display = 'none';
+      expandBtn.style.display = 'none';
+      full.style.display = 'block';
+    };
+  } else {
+    expandBtn.style.display = 'none';
+    full.style.display = 'block';
+  }
+}
+
+// Zapisz inspiracje do kolumny L w GAS
+function saveInspirationToSheet(inspirationsText) {
+  if (!inspirationsText || !WEBHOOK_URL || storedAnswers.length === 0) return;
+  const firstAnswer = storedAnswers[0];
+  const payload = {
+    action: 'saveInspirations',
+    name: userName,
+    first_timestamp: firstAnswer.timestamp,
+    inspirations_text: inspirationsText
+  };
+  fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload),
+    redirect: 'follow'
+  })
+    .then(() => console.log('✅ Inspiracje zapisane do kolumny L'))
+    .catch(err => console.warn('⚠️ Błąd zapisu inspiracji do L:', err));
 }
 
 function appendAnswerHistory(payload) {
