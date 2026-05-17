@@ -875,18 +875,18 @@ body {
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: #000000;
 }
 
 .thanks-subtitle {
   font-size: 0.35em;
   font-weight: 400;
   opacity: 0.7;
-  color: #fff;
+  color: #000000;
 }
 .thanks-body {
   font-size: 1rem;
-  color: #fff;
+  color: #000000;
   line-height: 1.6;
   font-style: italic;
 }
@@ -905,7 +905,7 @@ body {
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 14px;
-  color: #fff;
+  color: #000000;
 }
 
 /* Sekcja Skondensowanych inspiracji */
@@ -974,7 +974,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(245, 242, 236, 0.8);
+  color: #000000;
   margin-bottom: 10px;
 }
 
@@ -1003,7 +1003,7 @@ body {
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
+  color: #000000;
   text-align: center;
 }
 
@@ -1037,30 +1037,30 @@ body {
 .result-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #fff;
+  color: #000000;
   line-height: 1.25;
 }
 
 .result-answer {
   font-size: 0.88rem;
-  color: rgba(245, 242, 236, 0.85);
+  color: #000000;
 }
 
 .result-stats,
 .result-count {
   font-size: 0.78rem;
-  color: rgba(245, 242, 236, 0.68);
+  color: #000000;
 }
 
 .results-empty {
   font-size: 0.95rem;
-  color: rgba(245, 242, 236, 0.75);
+  color: #000000;
   text-align: center;
 }
 
 .thanks-sig {
   font-size: 0.95rem;
-  color: rgba(245, 242, 236, 0.5);
+  color: #000000;
   font-style: italic;
   margin-top: -8px;
 }

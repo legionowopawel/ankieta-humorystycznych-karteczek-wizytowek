@@ -110,6 +110,15 @@ function showScreen(n) {
   Object.values(screens).forEach(s => s.classList.remove("active"));
   screens[n].classList.add("active");
   window.scrollTo(0, 0);
+
+  // ✅ FIX: Gdy przechodzisz do screen 2, zatrzymaj video z screen 3
+  if (n === 2) {
+    const videos = imageWrapB?.querySelectorAll('video');
+    if (videos && videos.length > 0) {
+      videos[0].pause();
+      videos[0].currentTime = 0;
+    }
+  }
 }
 
 /* =============================================
@@ -791,9 +800,9 @@ function loadImage(imgEl, name) {
           video.controls = false;
           video.loop = true;
         } else {
-          // Screen 3: Film do oceny - z dźwiękiem, z controls, autoplay, bez loopу
+          // Screen 3: Film do oceny - z dźwiękiem, z controls, BEZ AUTOPLAY (włączymy ręcznie)
           video.controls = true;
-          video.autoplay = true;
+          video.autoplay = false;  // ✅ FIX: NIE autoplay - czeka na showScreen(3)
           video.muted = false;
           video.loop = false;
         }
@@ -830,6 +839,12 @@ function loadImage(imgEl, name) {
 ============================================= */
 screens[2].addEventListener("click", () => {
   showScreen(3);
+
+  // ✅ FIX: Włącz autoplay dla video na screen 3
+  const videos = imageWrapB?.querySelectorAll('video');
+  if (videos && videos.length > 0) {
+    videos[0].play().catch(err => console.log('Autoplay failed (expected):', err));
+  }
 });
 
 backBtn?.addEventListener("click", (e) => {
