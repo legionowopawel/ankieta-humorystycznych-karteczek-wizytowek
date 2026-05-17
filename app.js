@@ -343,6 +343,9 @@ function resizeCursorCanvas() {
 window.addEventListener('resize', resizeCursorCanvas);
 resizeCursorCanvas();
 
+let lastMouseMoveTime = 0;
+const MOUSE_THROTTLE_MS = 16; // ~60fps
+
 function startCursorEffect(type) {
   if (!cursorCanvas) return;
   stopCursorEffect();
@@ -355,8 +358,18 @@ function startCursorEffect(type) {
     return;
   }
 
-  document.body.addEventListener('mousemove', onCursorMove);
+  // ✅ Throttled mousemove handler dla lepszej perfor
+  const onCursorMoveThrottled = (event) => {
+    const now = Date.now();
+    if (now - lastMouseMoveTime >= MOUSE_THROTTLE_MS) {
+      cursorPosition = { x: event.clientX, y: event.clientY };
+      lastMouseMoveTime = now;
+    }
+  };
+
+  document.body.addEventListener('mousemove', onCursorMoveThrottled);
   document.body.addEventListener('mouseleave', onCursorLeave);
+  window._cursorMoveThrottled = onCursorMoveThrottled; // Zachowaj referencję do cleanup
 
   function frame() {
     const ctx = cursorCanvas.getContext('2d');
@@ -375,7 +388,11 @@ function stopCursorEffect() {
     activeCursorEffect.destroy();
   }
   if (activeCursorEffect && typeof activeCursorEffect.draw === 'function') {
-    document.body.removeEventListener('mousemove', onCursorMove);
+    // ✅ Usuń throttled handler
+    if (window._cursorMoveThrottled) {
+      document.body.removeEventListener('mousemove', window._cursorMoveThrottled);
+      window._cursorMoveThrottled = null;
+    }
     document.body.removeEventListener('mouseleave', onCursorLeave);
     if (cursorAnimationFrame) {
       cancelAnimationFrame(cursorAnimationFrame);
@@ -417,6 +434,19 @@ cursorEffects = {
    (omija problemy z CORS, nie wymaga backendu)
 ============================================= */
 function fetchQuestions() {
+  // ✅ Sprawdź cache sesji
+  const cachedQuestions = sessionStorage.getItem('cachedQuestions');
+  if (cachedQuestions) {
+    try {
+      const parsed = JSON.parse(cachedQuestions);
+      console.log('✅ Załadowano pytania z cache sesji:', parsed.length);
+      return Promise.resolve(parsed);
+    } catch (e) {
+      console.warn('⚠️ Cache Invalid, pobieranie na nowo...');
+      sessionStorage.removeItem('cachedQuestions');
+    }
+  }
+
   return new Promise((resolve, reject) => {
     // Unikalny callback name, żeby uniknąć kolizji
     const callbackName = "gvizCallback_" + Date.now();
@@ -447,6 +477,8 @@ function fetchQuestions() {
       cleanup();
       try {
         const parsed = parseGvizResponse(response);
+        // ✅ Zapisz do cache sesji
+        sessionStorage.setItem('cachedQuestions', JSON.stringify(parsed));
         resolve(parsed);
       } catch (e) {
         reject(e);
@@ -605,11 +637,28 @@ function showQuestion(index) {
     imageWrapB.classList.remove("swipe-out-left", "swipe-out-right");
   }
 
-  // Reset swipe hints
-  const rhHint = document.getElementById("swipe-right-hint");
-  const lhHint = document.getElementById("swipe-left-hint");
-  if (rhHint) rhHint.style.opacity = "0";
-  if (lhHint) lhHint.style.opacity = "0";
+  // Reset swipe hints — zapamiętaj w zmienne zamiast querySelector
+  if (!window._swipeHints) {
+    window._swipeHints = {
+      right: document.getElementById("swipe-right-hint"),
+      left: document.getElementById("swipe-left-hint")
+    };
+  }
+  if (window._swipeHints.right) window._swipeHints.right.style.opacity = "0";
+  if (window._swipeHints.left) window._swipeHints.left.style.opacity = "0";
+
+  // ✅ Preload następnego pytania
+  const nextIndex = index + 1;
+  if (nextIndex < questions.length) {
+    const nextQ = questions[nextIndex];
+    if (nextQ.obrazek_a && !document.querySelector(`img[src*="${nextQ.obrazek_a}"]`)) {
+      // Preload następnego media w tle
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = `images/${nextQ.obrazek_a}.mp4`;
+      document.head.appendChild(link);
+    }
+  }
 }
 
 /* =============================================
@@ -722,6 +771,16 @@ function loadImage(imgEl, name) {
         video.style.maxHeight = '70vh';
         video.style.borderRadius = '12px';
 
+        // ✅ Onerror handler dla video
+        video.onerror = (err) => {
+          console.error(`❌ Błąd ładowania video ${found.filePath}:`, err);
+          video.remove();
+          imgEl.style.display = 'none';
+          if (imageWrap) {
+            imageWrap.classList.add('no-image');
+          }
+        };
+
         // Sprawdzenie czy to film z ekranu 2 (obrazek_a) czy z ekranu 3 (obrazek_b)
         const isScreen2 = imageWrap.id === 'image-wrap-a';
 
@@ -745,6 +804,14 @@ function loadImage(imgEl, name) {
     } else {
       // Wyświetl jako obrazek (GIF, PNG, JPG, itp)
       imgEl.src = found.filePath;
+      // ✅ Onerror handler dla img
+      imgEl.onerror = () => {
+        console.error(`❌ Błąd ładowania obrazka ${found.filePath}`);
+        imgEl.style.display = 'none';
+        if (imageWrap) {
+          imageWrap.classList.add('no-image');
+        }
+      };
       imgEl.style.display = 'block';
       if (imageWrap) {
         // Usuń stare video jeśli istnieje
@@ -752,6 +819,9 @@ function loadImage(imgEl, name) {
         oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
       }
     }
+  }).catch(err => {
+    console.error(`❌ Błąd w loadImage(${name}):`, err);
+    if (imageWrap) imageWrap.classList.add('no-image');
   });
 }
 
@@ -863,14 +933,19 @@ imageWrapB?.addEventListener("touchmove", e => {
   imageWrapB.style.transform = `translateX(${dx * 0.6}px) rotate(${dx * 0.04}deg)`;
   imageWrapB.style.opacity = 1 - ratio * 0.3;
 
-  const rhint = document.getElementById("swipe-right-hint");
-  const lhint = document.getElementById("swipe-left-hint");
+  // ✅ Zapamiętane swipe hints zamiast querySelector
+  if (!window._swipeHints) {
+    window._swipeHints = {
+      right: document.getElementById("swipe-right-hint"),
+      left: document.getElementById("swipe-left-hint")
+    };
+  }
   if (dx > 0) {
-    rhint.style.opacity = ratio.toString();
-    lhint.style.opacity = "0";
+    if (window._swipeHints.right) window._swipeHints.right.style.opacity = ratio.toString();
+    if (window._swipeHints.left) window._swipeHints.left.style.opacity = "0";
   } else {
-    lhint.style.opacity = ratio.toString();
-    rhint.style.opacity = "0";
+    if (window._swipeHints.left) window._swipeHints.left.style.opacity = ratio.toString();
+    if (window._swipeHints.right) window._swipeHints.right.style.opacity = "0";
   }
 }, { passive: true });
 
@@ -880,8 +955,15 @@ imageWrapB?.addEventListener("touchend", e => {
     imageWrapB.style.transition = "";
     imageWrapB.style.transform = "";
     imageWrapB.style.opacity = "";
-    document.getElementById("swipe-right-hint").style.opacity = "0";
-    document.getElementById("swipe-left-hint").style.opacity = "0";
+    // ✅ Zapamiętane swipe hints
+    if (!window._swipeHints) {
+      window._swipeHints = {
+        right: document.getElementById("swipe-right-hint"),
+        left: document.getElementById("swipe-left-hint")
+      };
+    }
+    if (window._swipeHints.right) window._swipeHints.right.style.opacity = "0";
+    if (window._swipeHints.left) window._swipeHints.left.style.opacity = "0";
     return;
   }
 
