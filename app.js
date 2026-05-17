@@ -23,7 +23,7 @@ const GID = "0"; // ID arkusza (zakładki)
 // - GAS pobiera klucz z właściwych zmiennych i wysyła request do DeepSeek
 // - Odpowiedź wraca do frontend'u jako JSON
 // Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw7E0sWRxXaA_gM9e7xhUKPX6d1qSH2nu7Cu1fNH2HMzDu0HWIZiU3_bs6S7e_tKKIQ/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzCVZoF0Gkh87VHDaJr4WgCwqxPwJpwAngRs5A2ph4siXu5wp7nUR3Hlb7ZU-QUgWY0/exec";
 
 // ⚠️ TOKEN DOSTĘPU DO RANKINGU (authorization token)
 // WAŻNE: Ten token musi być zsynchronizowany z SECRET_RANKING_TOKEN w Właściwościach skryptu GAS!
