@@ -25,10 +25,21 @@ const GID = "0"; // ID arkusza (zakładki)
 // Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
 const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw7E0sWRxXaA_gM9e7xhUKPX6d1qSH2nu7Cu1fNH2HMzDu0HWIZiU3_bs6S7e_tKKIQ/exec";
 
+// ⚠️ TOKEN DOSTĘPU DO RANKINGU (authorization token)
+// WAŻNE: Ten token musi być zsynchronizowany z SECRET_RANKING_TOKEN w Właściwościach skryptu GAS!
+// Procedura:
+// 1. Wygeneruj losowy token (np. https://www.random.org/strings/) — min. 32 znaki
+// 2. W GAS: Ustawienia projektu → Właściwości skryptu → dodaj:
+//    - Klucz: SECRET_RANKING_TOKEN
+//    - Wartość: [twój token]
+// 3. Poniżej wpisz tę samą wartość:
+const RANKING_TOKEN = "ekQMR1HKYUzCRkZMu1cgio9I1WTo4ecw";
+
 console.log('🔧 App initialized:');
 console.log('  WEBHOOK_URL:', WEBHOOK_URL);
 console.log('  QUESTIONS_SHEET_ID:', QUESTIONS_SHEET_ID);
 console.log('  ℹ️ DeepSeek API Key jest zarządzany bezpiecznie po stronie GAS (Google Apps Script)');
+console.log('  ℹ️ Ranking Token dla autoryzacji:', RANKING_TOKEN === 'PLACEHOLDER_RANKING_TOKEN_CHANGE_ME_32_CHARS_MIN' ? '⚠️ BRAK - wstaw token!' : '✅ skonfigurowany');
 
 /* =============================================
    STAN APLIKACJI
@@ -104,6 +115,19 @@ function showScreen(n) {
 /* =============================================
    EKRAN 1 — START
 ============================================= */
+
+// Detect touch device and hide cursor toolbar
+function isTouchDevice() {
+  return (('ontouchstart' in window) ||
+    (navigator.maxTouchPoints > 0) ||
+    (navigator.msMaxTouchPoints > 0));
+}
+
+if (isTouchDevice()) {
+  console.log('📱 Touch device detected - hiding cursor effects bar');
+  cursorToolbar?.style.display = 'none';
+}
+
 startBtn?.addEventListener("click", handleStart);
 nameInput?.addEventListener("keydown", e => { if (e.key === "Enter") handleStart(); });
 anonymousBtn?.addEventListener("click", () => {
@@ -666,18 +690,53 @@ backBtn?.addEventListener("click", (e) => {
   showScreen(2);
 });
 
-backBtnTop?.addEventListener("click", () => {
-  if (currentIndex > 0 && currentIndex < questions.length) {
-    currentIndex--;
-    showQuestion(currentIndex);
-    showScreen(2);
-  } else if (currentIndex === questions.length) {
-    // Jeśli jesteśmy na ekranie dziękczyn, wróć do poprzedniego pytania
-    currentIndex--;
-    showQuestion(currentIndex);
-    showScreen(2);
-  } else {
-    showScreen(1);
+backBtnTop?.addEventListener("click", (e) => {
+  e.stopPropagation();
+
+  // Zdefiniowana logika wstecz dla każdego możliwego stanu aplikacji
+  const activeScreen = Object.entries(screens).find(([_, elem]) => elem.classList.contains("active"))?.[0];
+
+  switch (activeScreen) {
+    case '1': // Ekran powitalny
+      // Na ekranie powitalnym wstecz = nic (już na początku)
+      console.log('Już na ekranie powitalnym');
+      break;
+
+    case '2': // Ekran pytania A
+      if (currentIndex > 0) {
+        currentIndex--;
+        showQuestion(currentIndex);
+        showScreen(2);
+      } else {
+        // Pierwsze pytanie — wstecz do ekranu powitalnego
+        showScreen(1);
+      }
+      break;
+
+    case '3': // Ekran odpowiedzi B
+      // Wstecz zawsze idzie do ekranu 2 tego samego pytania
+      showScreen(2);
+      break;
+
+    case '4': // Ekran ładowania
+      // Podczas ładowania nie pozwalamy na wstecz (deaktywacja przycisku)
+      console.log('Proszę czekać na przetworzenie...');
+      break;
+
+    case '5': // Ekran wyników/dziękowania
+      if (currentIndex > 0) {
+        // Wstecz do ostatniego pytania
+        currentIndex--;
+        showQuestion(currentIndex);
+        showScreen(2);
+      } else {
+        // Powrót do ekranu powitalnego
+        showScreen(1);
+      }
+      break;
+
+    default:
+      console.warn('Unknown screen state:', activeScreen);
   }
 });
 
@@ -894,6 +953,9 @@ function goNext() {
    Trwa max 3 sekundy lub krócej jeśli DeepSeek odpowie
 ============================================= */
 function showLoadingScreen() {
+  // Wyłącz przycisk wstecz podczas ładowania
+  if (backBtnTop) backBtnTop.disabled = true;
+
   // Przygotuj ekran ładowania
   const loadingText = document.querySelector('.loading-text');
   const retryBtnEl = document.getElementById('retry-btn');
@@ -997,6 +1059,8 @@ function showLoadingScreen() {
     clearInterval(tickInterval);
     setBar(100, 'Gotowe! 🎉');
     setTimeout(() => {
+      // Włącz przycisk wstecz na ekranie wyników
+      if (backBtnTop) backBtnTop.disabled = false;
       displayInspirations(inspirationsResult);
       showScreen(5);
     }, 400);
@@ -1009,6 +1073,8 @@ function showLoadingScreen() {
       clearInterval(tickInterval);
       setBar(100, 'Gotowe! 🎉');
       setTimeout(() => {
+        // Włącz przycisk wstecz na ekranie wyników
+        if (backBtnTop) backBtnTop.disabled = false;
         displayInspirations(inspirationsResult);
         showScreen(5);
       }, 400);
@@ -1303,12 +1369,16 @@ async function showGlobalRanking() {
   let allAnswers = [];
 
   try {
-    const res = await fetch(WEBHOOK_URL + '?action=ranking', { method: 'GET' });
+    // Wyślij token w parametrze zapytania
+    const rankingUrl = WEBHOOK_URL + '?action=ranking&token=' + encodeURIComponent(RANKING_TOKEN);
+    const res = await fetch(rankingUrl, { method: 'GET' });
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'ok' && Array.isArray(data.answers)) {
         allAnswers = data.answers;
         console.log('✅ Pobrano', allAnswers.length, 'głosów z arkusza');
+      } else if (data.status === 'unauthorized') {
+        console.error('⚠️ Incorrect ranking token! Check RANKING_TOKEN in app.js and SECRET_RANKING_TOKEN in GAS.');
       }
     }
   } catch (err) {

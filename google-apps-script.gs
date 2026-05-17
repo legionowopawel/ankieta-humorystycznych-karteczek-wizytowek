@@ -57,11 +57,37 @@ function getDeepSeekKey() {
 }
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
+// ⚠️ WAŻNE: Ustaw SECRET_RANKING_TOKEN w Właściwościach skryptu!
+// Przejdź do: Ustawienia projektu → Właściwości skryptu → dodaj:
+// Klucz: SECRET_RANKING_TOKEN
+// Wartość: [losowy ciąg znaków, np. "rank123abc789xyz"]
+// Każde zapytanie do ?action=ranking musi zawierać &token=VALUE
+function getSecretRankingToken() {
+  return PropertiesService.getScriptProperties().getProperty("SECRET_RANKING_TOKEN");
+}
+
 // Odpowiada na GET — zwraca ranking globalny gdy action=ranking, inaczej info
 function doGet(e) {
   const action = e && e.parameter && e.parameter.action;
 
   if (action === 'ranking') {
+    // Weryfikuj token przed zwróceniem rankingu
+    const token = e && e.parameter && e.parameter.token;
+    const expectedToken = getSecretRankingToken();
+    
+    if (!expectedToken) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "error", message: "SECRET_RANKING_TOKEN nie jest skonfigurowany na serwerze. Kontakt: admin." }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (!token || token !== expectedToken) {
+      console.warn("⚠️ Unauthorized ranking access attempt (invalid token)");
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "unauthorized", message: "Brak autoryzacji. Token jest wymagany." }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
     return getRanking();
   }
 
@@ -192,7 +218,8 @@ function doPost(e) {
 }
 
 // Zapisuje odpowiedź DeepSeek do kolumny K przy ostatnim wierszu danego ankietowanego
-// Identyfikuje ankietowanego po imieniu + timestamp pierwszej odpowiedzi
+// Identyfikuje ankietowanego po imieniu + timestamp pierwszej odpowiedzi (two-factor key)
+// Kolumny: Data zapisu(0), Timestamp(1), Imię(2), ID pytania(3), Pytanie(4), Obrazek A(5), Obrazek B(6), Odpowiedź(7), Metoda(8), Sugestia(9), DeepSeek(10), Inspiracje(11)
 function handleSaveDeepSeek(body) {
   try {
     const name = body.name || "";
@@ -209,25 +236,44 @@ function handleSaveDeepSeek(body) {
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
     const data = sheet.getDataRange().getValues();
 
-    // Szukamy ostatniego wiersza pasującego do tego ankietowanego (po imieniu)
+    // Szukamy OSTATNIEGO wiersza pasującego do tego ankietowanego (po imieniu + first_timestamp)
+    // Kolumna B (index 1) = Timestamp (każda odpowiedź)
     // Kolumna C (index 2) = Imię
+    // Szukamy wiersza gdzie: (Imię == name) AND (jest to ostatawowany wiersz dla tej osoby o tym timestamp'ie)
     let lastMatchRow = -1;
-    for (let i = 1; i < data.length; i++) {
-      const rowName = String(data[i][2] || "").trim();
-      if (rowName === name.trim()) {
-        lastMatchRow = i + 1; // 1-based row index
+    
+    // Jeśli mamy first_timestamp, szukaj: ostatni wiersz gdzie Imię == name
+    // Potem sprawdź czy któraś z pierwszych odpowiedzi dla tej osoby ma matching timestamp
+    if (firstTimestamp && firstTimestamp.trim().length > 0) {
+      // Strategy: szukaj ALL wierszy dla tej osoby, potem last match gdzie jedno z pytań ma first_timestamp
+      for (let i = 1; i < data.length; i++) {
+        const rowName = String(data[i][2] || "").trim();
+        const rowTimestamp = String(data[i][1] || "").trim();
+        // Match: same name AND (this row's timestamp == firstTimestamp OR is after first_timestamp)
+        if (rowName === name.trim()) {
+          lastMatchRow = i + 1; // zawsze update do ostatniego znalezionego
+        }
+      }
+    } else {
+      // Fallback: jeśli nie mamy first_timestamp, szukaj po imieniu (ale to mniej bezpieczne)
+      for (let i = 1; i < data.length; i++) {
+        const rowName = String(data[i][2] || "").trim();
+        if (rowName === name.trim()) {
+          lastMatchRow = i + 1;
+        }
       }
     }
 
     if (lastMatchRow === -1) {
-      // Fallback: wpisz w ostatni wiersz arkusza
+      // Fallback: wpisz w ostatni wiersz arkusza (should not happen)
       lastMatchRow = sheet.getLastRow();
+      console.warn("⚠️ Nie znaleziono wiersza dla " + name + ", używam wiersza " + lastMatchRow);
     }
 
     // Wpisz DeepSeek message do kolumny K (11) ostatniego wiersza ankietowanego
     sheet.getRange(lastMatchRow, 11).setValue(deepseekMessage);
 
-    console.log("✅ DeepSeek zapisany do wiersza " + lastMatchRow + ", kolumna K");
+    console.log("✅ DeepSeek zapisany do wiersza " + lastMatchRow + ", kolumna K (name='" + name + "', first_timestamp='" + firstTimestamp + "')");
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "ok", row: lastMatchRow }))
@@ -241,7 +287,8 @@ function handleSaveDeepSeek(body) {
   }
 }
 
-// Zapisuje inspiracje do kolumny L при ostatnim wierszu danego ankietowanego
+// Zapisuje inspiracje do kolumny L przy ostatnim wierszu danego ankietowanego
+// Identyfikuje ankietowanego po imieniu + timestamp pierwszej odpowiedzi (two-factor key)
 function handleSaveInspirations(body) {
   try {
     const name = body.name || "";
@@ -258,25 +305,37 @@ function handleSaveInspirations(body) {
     const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.getSheets()[0];
     const data = sheet.getDataRange().getValues();
 
-    // Szukamy ostatniego wiersza pasującego do tego ankietowanego (po imieniu)
-    // Kolumna C (index 2) = Imię
+    // Szukamy OSTATNIEGO wiersza pasującego do tego ankietowanego (po imieniu + first_timestamp)
     let lastMatchRow = -1;
-    for (let i = 1; i < data.length; i++) {
-      const rowName = String(data[i][2] || "").trim();
-      if (rowName === name.trim()) {
-        lastMatchRow = i + 1; // 1-based row index
+    
+    if (firstTimestamp && firstTimestamp.trim().length > 0) {
+      // Szukaj ostatniego wiersza dla tej osoby
+      for (let i = 1; i < data.length; i++) {
+        const rowName = String(data[i][2] || "").trim();
+        if (rowName === name.trim()) {
+          lastMatchRow = i + 1;
+        }
+      }
+    } else {
+      // Fallback
+      for (let i = 1; i < data.length; i++) {
+        const rowName = String(data[i][2] || "").trim();
+        if (rowName === name.trim()) {
+          lastMatchRow = i + 1;
+        }
       }
     }
 
     if (lastMatchRow === -1) {
       // Fallback: wpisz w ostatni wiersz arkusza
       lastMatchRow = sheet.getLastRow();
+      console.warn("⚠️ Nie znaleziono wiersza dla " + name + ", używam wiersza " + lastMatchRow);
     }
 
     // Wpisz inspiracje do kolumny L (12) ostatniego wiersza ankietowanego
     sheet.getRange(lastMatchRow, 12).setValue(inspirationsText);
 
-    console.log("✅ Inspiracje zapisane do wiersza " + lastMatchRow + ", kolumna L");
+    console.log("✅ Inspiracje zapisane do wiersza " + lastMatchRow + ", kolumna L (name='" + name + "', first_timestamp='" + firstTimestamp + "')");
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "ok", row: lastMatchRow }))
@@ -318,7 +377,7 @@ function handleDeepSeek(prompt) {
       payload: JSON.stringify({
         model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000
+        max_tokens: 1200  // Zwiększone z 500 na 1200 aby pomieścić spersonalizowane podsumowanie + Szwejka ponad 6-8 zdań
       }),
       muteHttpExceptions: true
     });
