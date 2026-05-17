@@ -572,6 +572,11 @@ function loadImage(imgEl, name) {
         if (tried >= exts.length) {
           imgEl.src = "";
           imgEl.alt = "Brak obrazka";
+          imgEl.style.display = 'none';
+          if (imageWrap) {
+            imageWrap.classList.add('no-image');
+            imageWrap.style.display = 'none';
+          }
           return;
         }
         imgEl.src = `images/${name}.${exts[tried]}${bust}`;
@@ -949,10 +954,17 @@ async function generateThankYouMessage() {
 
   if (!hasSuggestions) {
     // Brak sugestii - automatyczna wiadomość + ogólny Szwejk bez DeepSeek
-    const autoMessage = "Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – świetnie wyczuwasz niuanse humoru, od docenienia trafnego żartu po subtelną rezerwę. Paweł prosił, by przekazać Ci, że Twoje spojrzenie wiele dla niego znaczy i inspiruje go do dalszej pracy z dystansem i uśmiechem.";
+    // Jeśli jest imię, użyj go w formie zdrobniałej powtórzonej
+    let greeting = "Serdecznie dziękuję Ci";
+    if (userName && userName.trim().length > 0) {
+      // Proste utworzenie form zdrobniałych - backend powinien to ulepszyć w DeepSeek
+      greeting = `Serdecznie dziękuję Ci ${userName}, ${userName}eczku`;
+    }
+    greeting += " za poświęcony czas i wnikliwe oceny – świetnie wyczuwasz niuanse humoru, od docenienia trafnego żartu po subtelną rezerwę. Paweł prosił, by przekazać Ci, że Twoje spojrzenie wiele dla niego znaczy i inspiruje go do dalszej pracy z dystansem i uśmiechem.";
+
     const szwejkFallback = `A dzielny Wojak Szwejk też to wiedział — i mawiał: <em>„Wie pan, panie oberlejtnant, ja zawsze głosuję uczciwie — raz za, raz przeciw, żeby się nie przemęczać."</em> Tak samo i Ty — z godną podziwu konsekwencją.`;
     if (thankYouEl) {
-      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${autoMessage}</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); line-height:1.7; display:block; margin-top:10px; font-style:italic;">${szwejkFallback}</span>`;
+      thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">${greeting}</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); line-height:1.7; display:block; margin-top:10px; font-style:italic;">${szwejkFallback}</span>`;
     }
     return null;
   }
@@ -970,7 +982,7 @@ async function generateThankYouMessage() {
     .map((a, i) => `- "${a.suggestion.trim()}"`)
     .join('\n');
 
-  const prompt = `Użytkownik (${userName}) wypełnił ankietę oceniającą rysunki humorystyczne. Oto jego odpowiedzi i komentarze:\n\n${surveyContext}\n\nNapisz dwie rzeczy — oddziel je znacznikiem |||:\n\n1. PODZIĘKOWANIE (2 zdania): Podziękuj mu ciepło od Pawła, pochwal wgląd w humor, nawiąż do jego komentarzy. Bądź szczery i ze smakiem.\n\n2. SZWEJK (3–4 zdania): Napisz jako narrator, który mówi: "A dzielny Wojak Szwejk też o tym wspominał — bo kiedy [tu nawiąż żartobliwie do tematu komentarza ankietowanego], opowiadał taką historię: [tu wstaw autentyczną lub stylizowaną anegdotę Szwejkową pasującą klimatem do komentarza]." Zakończ puentą Szwejka w cudzysłowie.\n\nFormat: PODZIĘKOWANIE|||SZWEJK\nBez żadnych innych znaczników, bez markdown.`;
+  const prompt = `Użytkownik (${userName}) wypełnił ankietę oceniającą rysunki humorystyczne. Oto jego odpowiedzi i komentarze:\n\n${surveyContext}\n\nNapisz dwie rzeczy — oddziel je znacznikiem |||:\n\n1. PODZIĘKOWANIE (2 zdania): Podziękuj ciepło od Pawła. WAŻNE: Jeśli imię użytkownika to "${userName}", zacznij podziękowaniem zwróconym bezpośrednio do tej osoby po imieniu w zdrobniałej formie POWTÓRZONEJ DWUKROTNIE Z RÓŻNYMI STOPNIOWANIAMI (np. jeśli Paweł: "Dziękuję Ci Pawle, Pawełku, Pawełeczku za..."). Pochwal wgląd w humor, nawiąż do komentarzy. Bądź szczery i ze smakiem.\n\n2. SZWEJK (6–8 zdań, DWA RAZY DŁUŻSZE): Napisz jako narrator opowiadający historię w stylu Jaroslava Haška — pełną ironii, humoru i odkrywania absurdu. Postać: Szwejk (młody Polak żyjący dzisiaj w Polsce, ale o duchu i mądrości oryginalnego Szwejka — naiwny pozornie, ale głęboko mądry). Gatunek: opowiadanie-anegdota pasująca do komentarza ankietowanego, z dialogami, emocikonkami pokazującymi intonacje/gesty Szwejka (😏 dla drwiny, 🤔 dla zastanowienia, 😅 dla zażenowania, itd), przejściami między refleksją a czynem, subtelną krytyką. Nie pisz pełne opowieści — skup się na kwintesencji (samej istocie). Narrator mówi: "A dzielny Szwejk — gdybyś go poznał dzisiaj w Polsce — powiedzielibyśmy w takich słowach: [tu wprowadź sytuację z humorystycznym dialogiem lub monologiem Szwejka pasującym do tematu komentarza]. [Dodaj konkrety, emocjonalne intonacje pokazane emotikonkami, krótkie dialogi, refleksje drwiące z absurdu świata]." Zakończ typową Szwejkowską puentą w cudzysłowie, pełną pozornej naiwności i głębokich prawd o człowieku.\n\nFormat: PODZIĘKOWANIE|||SZWEJK\nBez żadnych innych znaczników, bez markdown.`;
 
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
@@ -993,9 +1005,9 @@ async function generateThankYouMessage() {
 
         if (thankYouEl) {
           thankYouEl.innerHTML =
-            `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">${thankPart}</em>` +
+            `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">${thankPart}</em>` +
             (szwejkPart
-              ? `<br><br><span style="font-size:0.88rem; color:var(--ink-muted); line-height:1.75; display:block; margin-top:10px; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 ${szwejkPart}</span>`
+            ? `<br><br><span style="font-size:0.9rem; color:#fff; line-height:1.75; display:block; margin-top:10px; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 ${szwejkPart}</span>`
               : '');
         }
         // Zapisz odpowiedź DeepSeek do kolumny K (przy ostatniej odpowiedzi ankietowanego)
@@ -1004,7 +1016,7 @@ async function generateThankYouMessage() {
       } else if (data.status === 'error') {
         console.warn('⚠️ GAS zwrócił błąd:', data.message);
         if (thankYouEl) {
-          thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Ja zawsze mówię prawdę, panie oberlejtnant — szczególnie wtedy, gdy nikt nie pyta."</em></span>`;
+          thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br><span style="font-size:0.88rem; color:#fff; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Ja zawsze mówię prawdę, panie oberlejtnant — szczególnie wtedy, gdy nikt nie pyta."</em></span>`;
         }
       }
     } else {
@@ -1014,7 +1026,7 @@ async function generateThankYouMessage() {
     // DeepSeek jest opcjonalny — błąd nie blokuje wyświetlenia wyników
     console.warn('⚠️ Nie udało się wygenerować wiadomości DeepSeek (sprawdź wdrożenie GAS):', err.message);
     if (thankYouEl) {
-      thankYouEl.innerHTML = `<em style="color:#FFD700; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br><span style="font-size:0.88rem; color:var(--ink-muted); font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Każda ankieta to jak wizyta u doktora — człowiek nie wie, co mu znajdą, ale wychodzi spokojniejszy."</em></span>`;
+      thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br><span style="font-size:0.88rem; color:#fff; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Każda ankieta to jak wizyta u doktora — człowiek nie wie, co mu znajdą, ale wychodzi spokojniejszy."</em></span>`;
     }
   }
   return null;
@@ -1166,10 +1178,14 @@ function renderRanking(answers) {
     const statsText = item.total > 0
       ? `👍 ${item.positiveRate.toFixed(0)}%${advantage}`
       : '—';
-    // Miniatura: próbuj PNG, fallback JPG, fallback ramka z wideo
-    const thumbHtml = `
-      <img src="images/${item.image_b}.png?v=${bust}" alt="Miniatura"
-           onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />`;
+
+    // Miniatura: spróbuj MP4, PNG, JPG
+    let thumbHtml = `<img src="images/${item.image_b}.png?v=${bust}" alt="Miniatura" onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />`;
+    // Dla filmów MP4 wstaw video element z posterframe
+    if (item.image_b) {
+      thumbHtml = `<video style="width:100%; height:100%; object-fit:cover;" preload="metadata" poster="images/${item.image_b}.png?v=${bust}" onerror="this.src='images/${item.image_b}.jpg?v=${bust}'"><source src="images/${item.image_b}.mp4?v=${bust}" type="video/mp4"></video><img style="display:none;" src="images/${item.image_b}.png?v=${bust}" alt="Miniatura" onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />`;
+    }
+
     return `
       <div class="result-row${index === 0 && item.total > 0 ? ' result-top' : ''}"
            onclick="openLightbox('${item.image_b}')" style="cursor:pointer" title="Kliknij aby zobaczyć obrazek">

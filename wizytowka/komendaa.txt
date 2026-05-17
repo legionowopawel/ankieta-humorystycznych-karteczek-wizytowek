@@ -1,9 +1,0 @@
-C:\wizytowka>
-
-
-
-magick montage *.png -tile 2x5 -geometry 1004x650+10+10 -background white -density 300 -page A4 wizytowki.pdf
-
-
-
-C:\wizytowka>magick montage *.png -tile 2x5 -geometry 1004x650+10+10 -background white temp.png

@@ -100,6 +100,14 @@ body {
   flex-direction: column;
   justify-content: center;
   padding-top: 48px;
+  align-items: center;
+  }
+  
+  .welcome-logo {
+    max-width: 280px;
+    width: 100%;
+    height: auto;
+    margin-bottom: 24px;
 }
 
 .logo-mark {
@@ -125,12 +133,13 @@ body {
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 10vw, 3.6rem);
+  font-size: clamp(1.2rem, 5vw, 1.6rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.02em;
   color: var(--ink);
   margin-bottom: 20px;
+  display: none;
 }
 
 .subtitle {
@@ -139,6 +148,7 @@ body {
   font-weight: 300;
   line-height: 1.6;
   max-width: 300px;
+  display: none;
 }
 
 #cursorBar {
@@ -447,6 +457,13 @@ body {
   -webkit-user-drag: none;
 }
 
+/* Gdy brak obrazka — ukryj całą image-wrap */
+.image-wrap.no-image {
+  display: none !important;
+  aspect-ratio: unset;
+  height: auto;
+  margin-bottom: 0;
+}
 .image-badge {
   position: absolute;
   top: 12px;
@@ -549,6 +566,20 @@ body {
   line-height: 1.5;
 }
 
+/* Gdy brak obrazka — wzmocnij tekst odpowiedzi */
+.image-wrap.no-image+.answer-text {
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--ink);
+  font-style: normal;
+  letter-spacing: -0.01em;
+  margin-top: 12px;
+  padding: 20px 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+  box-shadow: var(--shadow);
+}
 /* =============================================
    RATING BUTTONS
 ============================================= */
@@ -724,7 +755,9 @@ body {
 }
 
 .thanks-icon {
-  font-size: 4rem;
+  width: 80px;
+    height: 80px;
+    background: url('body/szwejk.png') center / contain no-repeat;
   animation: float 3s ease-in-out infinite;
 }
 
@@ -828,17 +861,18 @@ body {
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
-  color: var(--accent);
+  color: #fff;
 }
 
 .thanks-subtitle {
   font-size: 0.35em;
   font-weight: 400;
   opacity: 0.7;
+  color: #fff;
 }
 .thanks-body {
   font-size: 1rem;
-  color: #FFD700;
+  color: #fff;
   line-height: 1.6;
   font-style: italic;
 }
@@ -922,6 +956,12 @@ body {
   display: block;
 }
 
+.result-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .result-info {
   display: flex;
   flex-direction: column;
