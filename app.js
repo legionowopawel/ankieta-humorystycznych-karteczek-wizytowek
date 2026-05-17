@@ -505,12 +505,19 @@ function showQuestion(index) {
   // Ekran 2
   questionTextA.textContent = q.pytanie;
   imageA.style.display = '';
-  loadImage(imageA, q.obrazek_a);
+  if (q.obrazek_a) {
+    loadImage(imageA, q.obrazek_a, q.pytanie, 'a');
+  } else {
+    displayTextInImage(imageWrapA, q.pytanie);
+  }
 
   // Ekran 3
   imageB.style.display = '';
-  loadImage(imageB, q.obrazek_b);
-  answerText.textContent = q.odpowiedz ? `„${q.odpowiedz}"` : "";
+  if (q.obrazek_b) {
+    loadImage(imageB, q.obrazek_b, q.odpowiedz, 'b');
+  } else {
+    displayTextInImage(imageWrapB, q.odpowiedz);
+  }
 
   // Reset textarea i licznika
   if (suggestionInput) suggestionInput.value = "";
@@ -531,61 +538,120 @@ function showQuestion(index) {
   if (lhHint) lhHint.style.opacity = "0";
 }
 
-// Próbuje mp4, png, jpg, jpeg, webp — z cache-bustingiem żeby zawsze ładować świeże pliki
+/* =============================================
+   WYŚWIETLANIE TEKSTU ZAMIAST OBRAZKA
+============================================= */
+function displayTextInImage(imageWrap, text) {
+  if (!text) text = "Brak treści";
+
+  // Czyszczenie poprzedniej zawartości
+  imageWrap.classList.remove('no-image');
+  imageWrap.classList.add('text-display');
+
+  // Usuń poprzednie video
+  const videos = imageWrap.querySelectorAll('video');
+  videos.forEach(v => v.remove());
+
+  // Usuń poprzedni tekst
+  const oldText = imageWrap.querySelector('.text-content');
+  if (oldText) oldText.remove();
+
+  // Usuń poprzedni obrazek
+  const imgs = imageWrap.querySelectorAll('img');
+  imgs.forEach(img => img.style.display = 'none');
+
+  // Dodaj nowy element z tekstem
+  const textEl = document.createElement('div');
+  textEl.className = 'text-content';
+  textEl.textContent = text;
+  textEl.style.cursor = 'pointer';
+  textEl.onclick = () => openTextLightbox(text);
+  imageWrap.appendChild(textEl);
+
+  // Auto-scale tekstu aby się zmieścił
+  autoScaleText(textEl, imageWrap);
+}
+
+/* Auto-skalowanie tekstu */
+function autoScaleText(textEl, container) {
+  let fontSize = 32;
+  textEl.style.fontSize = fontSize + 'px';
+
+  // Zminiejszaj tekst dopóki się nie mieści
+  while (textEl.scrollHeight > container.offsetHeight && fontSize > 12) {
+    fontSize--;
+    textEl.style.fontSize = fontSize + 'px';
+  }
+}
+
+// Próbuje wszystkie formaty równolegle: mp4, png, jpg, jpeg, webp
 function loadImage(imgEl, name) {
   if (!name) { imgEl.src = ""; return; }
 
   const bust = "?v=" + (window._imageCacheBust || (window._imageCacheBust = Date.now()));
   const imageWrap = imgEl.closest('.image-wrap');
 
-  // Najpierw spróbuj MP4
-  const videoPath = `images/${name}.mp4${bust}`;
+  // Czyszczenie text-display i no-image
+  if (imageWrap) {
+    imageWrap.classList.remove('text-display', 'no-image');
+    const textContent = imageWrap.querySelector('.text-content');
+    if (textContent) textContent.remove();
+  }
 
-  // Sprawdź czy video można załadować
-  fetch(videoPath, { method: 'HEAD' })
-    .then(res => {
-      if (res.ok) {
-        // Zastąp img videoem
-        if (imageWrap) {
-          const video = document.createElement('video');
-          video.src = videoPath;
-          video.controls = true;
-          video.autoplay = true;
-          video.style.width = '100%';
-          video.style.height = 'auto';
-          video.style.maxHeight = '300px';
-          video.style.borderRadius = '12px';
+  // Lista formatów do próbowania: MP4 najpierw (może mieć dźwięk), potem obrazki
+  const formats = ['mp4', 'png', 'jpg', 'jpeg', 'webp'];
 
-          imgEl.style.display = 'none';
-          imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
+  // Tworz promise dla każdego formatu
+  const formatPromises = formats.map(ext => {
+    const filePath = `images/${name}.${ext}${bust}`;
+    return fetch(filePath, { method: 'HEAD' })
+      .then(res => {
+        if (res.ok) {
+          return { ext, filePath, ok: true };
         }
-      } else {
-        throw new Error('MP4 not found, try image formats');
-      }
-    })
-    .catch(() => {
-      // Fallback na jpg/png
-      const exts = ["png", "jpg", "jpeg", "webp"];
-      let tried = 0;
+        throw new Error(`${ext} not found`);
+      })
+      .catch(() => ({ ext, filePath, ok: false }));
+  });
 
-      function tryNext() {
-        if (tried >= exts.length) {
-          imgEl.src = "";
-          imgEl.alt = "Brak obrazka";
-          imgEl.style.display = 'none';
-          if (imageWrap) {
-            imageWrap.classList.add('no-image');
-            imageWrap.style.display = 'none';
-          }
-          return;
-        }
-        imgEl.src = `images/${name}.${exts[tried]}${bust}`;
-        tried++;
-      }
+  // Czekaj na wszystkie i weź pierwszy znaleziony
+  Promise.all(formatPromises).then(results => {
+    const found = results.find(r => r.ok);
 
-      imgEl.onerror = tryNext;
-      tryNext();
-    });
+    if (!found) {
+      // Żaden plik nie znaleziony
+      imgEl.src = "";
+      imgEl.alt = "Brak obrazka";
+      imgEl.style.display = 'none';
+      if (imageWrap) {
+        imageWrap.classList.add('no-image');
+        imageWrap.style.display = 'none';
+      }
+      return;
+    }
+
+    // Znaleziono plik - sprawdź czy to MP4
+    if (found.ext === 'mp4') {
+      // Wyświetl jako video
+      if (imageWrap) {
+        const video = document.createElement('video');
+        video.src = found.filePath;
+        video.controls = true;
+        video.autoplay = true;
+        video.style.width = '100%';
+        video.style.height = 'auto';
+        video.style.maxHeight = '70vh';
+        video.style.borderRadius = '12px';
+
+        imgEl.style.display = 'none';
+        imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
+      }
+    } else {
+      // Wyświetl jako obrazek
+      imgEl.src = found.filePath;
+      imgEl.style.display = 'block';
+    }
+  });
 }
 
 /* =============================================
