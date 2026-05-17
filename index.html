@@ -124,6 +124,17 @@
         <div class="swipe-indicator swipe-right-hint" id="swipe-right-hint">👍</div>
         <div class="swipe-indicator swipe-left-hint" id="swipe-left-hint">👎</div>
       </div>
+      <div class="rating-buttons" style="margin-top: 12px; margin-bottom: 12px;">
+        <button class="btn-rate btn-like" data-answer="podoba mi się" data-method="button">
+          <span class="btn-icon">🟢</span> Podoba
+        </button>
+        <button class="btn-rate btn-neutral" data-answer="nie wiem, nie znam się, zarobiony jestem" data-method="button">
+          <span class="btn-icon">🟡</span> Nie podoba
+        </button>
+        <button class="btn-rate btn-dislike" data-answer="zdecydowanie mi się nie podoba" data-method="button">
+          <span class="btn-icon">🔴</span> Zdecydowanie nie
+        </button>
+      </div>
       <div class="answer-text" id="answer-text"></div>
       <div class="swipe-tip">
         <span>← przesuń aby odrzucić</span>
@@ -134,17 +145,6 @@
           wybory poniżej</label>
         <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Twój komentarz..."></textarea>
         <div class="char-counter"><span id="char-count">0</span>/1000</div>
-      </div>
-      <div class="rating-buttons">
-        <button class="btn-rate btn-like" data-answer="podoba mi się" data-method="button">
-          <span class="btn-icon">🟢</span> Podoba
-        </button>
-        <button class="btn-rate btn-neutral" data-answer="nie wiem, nie znam się, zarobiony jestem" data-method="button">
-          <span class="btn-icon">🟡</span> Nie podoba
-        </button>
-        <button class="btn-rate btn-dislike" data-answer="zdecydowanie mi się nie podoba" data-method="button">
-          <span class="btn-icon">🔴</span> Zdecydowanie nie
-        </button>
       </div>
       <button class="btn-back" id="back-btn-3">← Wstecz</button>
     </div>
@@ -172,7 +172,7 @@
       </div>
       <!-- Sekcja: Skondensowane inspiracje na żarty -->
       <div class="inspirations-panel" id="inspirations-panel" style="display:none;">
-        <h3 class="inspirations-heading">✨ Skondensowane inspiracje na żarty i humor</h3>
+        <h3 class="inspirations-heading">oto żarty które powstały teraz dzięki Tobie:</h3>
         <div class="inspirations-preview" id="inspirations-preview"></div>
         <button class="btn-secondary" id="inspirations-expand-btn" style="display:none;">📖 Czytaj dalej...</button>
         <div class="inspirations-full" id="inspirations-full" style="display:none;"></div>

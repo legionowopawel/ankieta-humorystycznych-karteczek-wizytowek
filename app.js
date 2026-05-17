@@ -23,7 +23,7 @@ const GID = "0"; // ID arkusza (zakładki)
 // - GAS pobiera klucz z właściwych zmiennych i wysyła request do DeepSeek
 // - Odpowiedź wraca do frontend'u jako JSON
 // Dzięki tому: klucz jest bezpieczny, frontend nie ma dostępu do API, łatwo zmienić klucz bez redeploy frontend'u
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzCVZoF0Gkh87VHDaJr4WgCwqxPwJpwAngRs5A2ph4siXu5wp7nUR3Hlb7ZU-QUgWY0/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw5c3iy-7DE0ZFHQ2Ru50Ggi0_MbkyKoIVIjgOOnuCjSAqfZqyVx0JuhYkknSqygAQK/exec";
 
 // ⚠️ TOKEN DOSTĘPU DO RANKINGU (authorization token)
 // WAŻNE: Ten token musi być zsynchronizowany z SECRET_RANKING_TOKEN w Właściwościach skryptu GAS!
@@ -668,14 +668,33 @@ function loadImage(imgEl, name) {
     if (found.ext === 'mp4') {
       // Wyświetl jako video
       if (imageWrap) {
+        // Usuń stare video jeśli istnieje
+        const oldVideos = imageWrap.querySelectorAll('video');
+        oldVideos.forEach(v => v.remove());
+
         const video = document.createElement('video');
         video.src = found.filePath;
-        video.controls = true;
-        video.autoplay = true;
         video.style.width = '100%';
         video.style.height = 'auto';
         video.style.maxHeight = '70vh';
         video.style.borderRadius = '12px';
+
+        // Sprawdzenie czy to film z ekranu 2 (obrazek_a) czy z ekranu 3 (obrazek_b)
+        const isScreen2 = imageWrap.id === 'image-wrap-a';
+
+        if (isScreen2) {
+          // Screen 2: Film 1a - bez dźwięku, bez controls, autoplay
+          video.muted = true;
+          video.autoplay = true;
+          video.controls = false;
+          video.loop = true;
+        } else {
+          // Screen 3: Film 2b - z dźwiękiem, z controls, autoplay
+          video.controls = true;
+          video.autoplay = true;
+          video.muted = false;
+          video.loop = false;
+        }
 
         imgEl.style.display = 'none';
         imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
@@ -1457,6 +1476,8 @@ function renderRanking(answers) {
   }
 
   const bust = window._imageCacheBust || Date.now();
+
+  // Najpierw wyświetl strukturę bez obrazków
   const rowsHtml = results.map((item, index) => {
     const nextRate = index + 1 < results.length ? results[index + 1].positiveRate : 0;
     const advantage = index === 0 && results.length > 1
@@ -1465,18 +1486,15 @@ function renderRanking(answers) {
       ? `👍 ${item.positiveRate.toFixed(0)}%${advantage}`
       : '—';
 
-    // Miniatura: spróbuj MP4, PNG, JPG
-    let thumbHtml = `<img src="images/${item.image_b}.png?v=${bust}" alt="Miniatura" onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />`;
-    // Dla filmów MP4 wstaw video element z posterframe
-    if (item.image_b) {
-      thumbHtml = `<video style="width:100%; height:100%; object-fit:cover;" preload="metadata" poster="images/${item.image_b}.png?v=${bust}" onerror="this.src='images/${item.image_b}.jpg?v=${bust}'"><source src="images/${item.image_b}.mp4?v=${bust}" type="video/mp4"></video><img style="display:none;" src="images/${item.image_b}.png?v=${bust}" alt="Miniatura" onerror="this.onerror=null;this.src='images/${item.image_b}.jpg?v=${bust}'" />`;
-    }
-
+    // Placeholder zamiast faktycznego obrazka na początek
     return `
       <div class="result-row${index === 0 && item.total > 0 ? ' result-top' : ''}"
-           onclick="openLightbox('${item.image_b}')" style="cursor:pointer" title="Kliknij aby zobaczyć obrazek">
+           onclick="openLightbox('${item.image_b}')" style="cursor:pointer" title="Kliknij aby zobaczyć obrazek"
+           data-image-name="${item.image_b}">
         <div class="result-rank">${index + 1}</div>
-        <div class="result-thumb">${thumbHtml}</div>
+        <div class="result-thumb" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+          <span style="color: #999; font-size: 0.8rem;">⏳</span>
+        </div>
         <div class="result-info">
           <div class="result-title">${item.question_text || item.image_b}</div>
           <div class="result-answer">${item.answerLabel}</div>
@@ -1494,6 +1512,68 @@ function renderRanking(answers) {
     </div>
     <div class="results-list">${rowsHtml}</div>
   `;
+
+  // Teraz wczytuj obrazki po kolei
+  loadImagesSequentially(results, bust);
+}
+
+// Wczytuj obrazki jeden po drugim
+function loadImagesSequentially(results, bust) {
+  let index = 0;
+
+  function loadNext() {
+    if (index >= results.length) return;
+
+    const item = results[index];
+    const resultRow = document.querySelector(`[data-image-name="${item.image_b}"]`);
+
+    if (resultRow) {
+      const thumbDiv = resultRow.querySelector('.result-thumb');
+
+      // Spróbuj MP4 najpierw
+      const videoPath = `images/${item.image_b}.mp4?v=${bust}`;
+      fetch(videoPath, { method: 'HEAD' })
+        .then(res => {
+          if (res.ok) {
+            // Jest video
+            thumbDiv.innerHTML = `<video style="width:100%; height:100%; object-fit:cover;" preload="metadata" poster="images/${item.image_b}.png?v=${bust}"><source src="${videoPath}" type="video/mp4"></video>`;
+            thumbDiv.style.background = 'transparent';
+            index++;
+            // Wczytaj następny po krótkim opóźnieniu
+            setTimeout(loadNext, 100);
+          } else {
+            throw new Error('No video');
+          }
+        })
+        .catch(() => {
+          // Spróbuj PNG
+          const pngPath = `images/${item.image_b}.png?v=${bust}`;
+          fetch(pngPath, { method: 'HEAD' })
+            .then(res => {
+              if (res.ok) {
+                thumbDiv.innerHTML = `<img src="${pngPath}" alt="Miniatura" style="width:100%; height:100%; object-fit:cover;" />`;
+              } else {
+                throw new Error('No PNG');
+              }
+            })
+            .catch(() => {
+              // Spróbuj JPG
+              const jpgPath = `images/${item.image_b}.jpg?v=${bust}`;
+              thumbDiv.innerHTML = `<img src="${jpgPath}" alt="Miniatura" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'" />`;
+            })
+            .finally(() => {
+              thumbDiv.style.background = 'transparent';
+              index++;
+              setTimeout(loadNext, 100);
+            });
+        });
+    } else {
+      index++;
+      loadNext();
+    }
+  }
+
+  loadNext();
 }
 
 // Lightbox — pełnoekranowy podgląd obrazka/video
