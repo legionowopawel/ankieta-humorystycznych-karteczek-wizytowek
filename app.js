@@ -1,4 +1,4 @@
-/* =============================================
+﻿/* =============================================
    KONFIGURACJA
 ============================================= */
 
@@ -125,12 +125,19 @@ function isTouchDevice() {
 
 if (isTouchDevice()) {
   console.log('📱 Touch device detected - hiding cursor effects bar');
-  cursorToolbar?.style.display = 'none';
+  if (cursorToolbar) {
+    cursorToolbar.style.display = 'none';
+  }
 }
 
-startBtn?.addEventListener("click", handleStart);
-nameInput?.addEventListener("keydown", e => { if (e.key === "Enter") handleStart(); });
-anonymousBtn?.addEventListener("click", () => {
+if (startBtn) {
+  startBtn.addEventListener("click", handleStart);
+}
+if (nameInput) {
+  nameInput.addEventListener("keydown", e => { if (e.key === "Enter") handleStart(); });
+}
+if (anonymousBtn) {
+  anonymousBtn.addEventListener("click", () => {
   isAnonymous = true;
   userName = "Anonimowy";
   userGender = genderSelect.value || "";
@@ -138,13 +145,16 @@ anonymousBtn?.addEventListener("click", () => {
   setCursor(cursorType);
   startSurvey();
 });
+}
 
-cursorToolbar?.querySelectorAll(".cbar-btn").forEach(button => {
-  button.addEventListener("click", () => {
-    const type = button.dataset.cursor;
-    setCursor(type);
+if (cursorToolbar) {
+  cursorToolbar.querySelectorAll(".cbar-btn").forEach(button => {
+    button.addEventListener("click", () => {
+      const type = button.dataset.cursor;
+      setCursor(type);
+    });
   });
-});
+}
 
 setCursor('none');
 
@@ -1596,3 +1606,5 @@ function downloadTxtFile(filename) {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+
