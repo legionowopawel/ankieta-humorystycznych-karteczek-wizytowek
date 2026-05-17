@@ -656,16 +656,18 @@ function showQuestion(index) {
   if (window._swipeHints.right) window._swipeHints.right.style.opacity = "0";
   if (window._swipeHints.left) window._swipeHints.left.style.opacity = "0";
 
-  // ✅ Preload następnego pytania
+  // ✅ Preload następnego pytania (multi-format)
   const nextIndex = index + 1;
   if (nextIndex < questions.length) {
     const nextQ = questions[nextIndex];
-    if (nextQ.obrazek_a && !document.querySelector(`img[src*="${nextQ.obrazek_a}"]`)) {
-      // Preload następnego media w tle
-      const link = document.createElement('link');
-      link.rel = 'prefetch';
-      link.href = `images/${nextQ.obrazek_a}.mp4`;
-      document.head.appendChild(link);
+    if (nextQ.obrazek_a) {
+      const formats = ['mp4', 'webm', 'mpg', 'mpeg', 'gif', 'png', 'jpg', 'jpeg', 'webp'];
+      formats.forEach(ext => {
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = `images/${nextQ.obrazek_a}.${ext}`;
+        document.head.appendChild(link);
+      });
     }
   }
 }
@@ -794,8 +796,8 @@ function loadImage(imgEl, name) {
         const isScreen2 = imageWrap.id === 'image-wrap-a';
 
         if (isScreen2) {
-          // Screen 2: Film preview - bez dźwięku, bez controls, autoplay, loop
-          video.muted = true;
+          // Screen 2: Film z dźwiękiem, bez controls, autoplay, loop
+          video.muted = false;   // ✅ FIX: Z DŹWIĘKIEM!
           video.autoplay = true;
           video.controls = false;
           video.loop = true;
@@ -841,7 +843,8 @@ function loadImage(imgEl, name) {
 screens[2].addEventListener("click", () => {
   showScreen(3);
 
-  // ✅ FIX: Unmute video na screen 3 (autoplay już działa z muted=true)
+  // ✅ FIX: Unmute video na screen 3 (guard clause)
+  if (!imageWrapB) return; // ✅ Guard clause
   const videos = imageWrapB?.querySelectorAll('video');
   if (videos && videos.length > 0) {
     videos[0].muted = false;
@@ -967,20 +970,21 @@ imageWrapB?.addEventListener("touchmove", e => {
 }, { passive: true });
 
 imageWrapB?.addEventListener("touchend", e => {
+  if (!imageWrapB) return; // ✅ Guard clause
   const dx = e.changedTouches[0].clientX - touchStartX;
   if (!isSwiping || Math.abs(dx) < 50) {
     imageWrapB.style.transition = "";
     imageWrapB.style.transform = "";
     imageWrapB.style.opacity = "";
-    // ✅ Zapamiętane swipe hints
+    // ✅ Zapamiętane swipe hints z null-check
     if (!window._swipeHints) {
       window._swipeHints = {
         right: document.getElementById("swipe-right-hint"),
         left: document.getElementById("swipe-left-hint")
       };
     }
-    if (window._swipeHints.right) window._swipeHints.right.style.opacity = "0";
-    if (window._swipeHints.left) window._swipeHints.left.style.opacity = "0";
+    if (window._swipeHints?.right) window._swipeHints.right.style.opacity = "0";
+    if (window._swipeHints?.left) window._swipeHints.left.style.opacity = "0";
     return;
   }
 
@@ -1066,8 +1070,11 @@ function sendToSheetInBackground(payload) {
     .then(() => console.log("✅ Wysłano do GAS (no-cors):", payload.question_id))
     .catch(err => console.warn("⚠️ Błąd wysyłania do GAS:", err));
 
-  // sendBeacon jako backup przy zamknięciu karty
+  // sendBeacon jako backup przy zamknięciu karty (tylko raz)
+  let beaconSent = false;
   window.addEventListener("beforeunload", () => {
+    if (beaconSent) return; // ✅ Preventuj spam
+    beaconSent = true;
     const blob = new Blob([json], { type: "text/plain" });
     navigator.sendBeacon?.(WEBHOOK_URL, blob);
   }, { once: true });
