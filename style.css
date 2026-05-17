@@ -32,7 +32,7 @@
 html,
 body {
   height: 100%;
-  background: var(--bg);
+  background: #E8E8E8;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 16px;
@@ -760,8 +760,8 @@ body {
    SCREEN 5 — THANKS
 ============================================= */
 .thanks-screen {
-  background: var(--ink);
-  color: var(--bg);
+  background: #E8E8E8;
+    color: #000000;
 }
 
 .thanks-screen.center-screen {

@@ -506,6 +506,13 @@ function parseGvizResponse(response) {
       obrazek_b: val(5),
     };
 
+    // Pomiń etap jeśli ogół C i D są puste
+    if (!val(2).trim() && !val(3).trim()) {
+      skipped++;
+      console.warn(`⏭️  Pominięto wiersz #${id}: brak tekstu w C i mediów w D`);
+      continue;
+    }
+
     console.log(`✅ Załadowano pytanie #${id}:`, question);
     result.push(question);
   }
@@ -528,29 +535,62 @@ function showQuestion(index) {
   progressFill3.style.width = pct + "%";
   progressLabel3.textContent = `Pytanie ${index + 1} z ${total}`;
 
-  // Czyszczenie poprzednich video
+  // === CZYSZCZENIE WSZYSTKICH MEDIÓW Z POPRZEDNIEGO ETAPU ===
   [imageWrapA, imageWrapB].forEach(wrap => {
     if (wrap) {
+      // Usuń video
       const videos = wrap.querySelectorAll('video');
-      videos.forEach(v => v.remove());
+      videos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
+
+      // Usuń audio
+      const audios = wrap.querySelectorAll('audio');
+      audios.forEach(a => { a.pause(); a.src = ''; a.remove(); });
+
+      // Usuń tekst
+      const textContent = wrap.querySelector('.text-content');
+      if (textContent) textContent.remove();
+
+      wrap.classList.remove('text-display', 'no-image');
     }
   });
 
-  // Ekran 2
-  questionTextA.textContent = q.pytanie;
-  imageA.style.display = '';
-  if (q.obrazek_a) {
-    loadImage(imageA, q.obrazek_a, q.pytanie, 'a');
-  } else {
-    displayTextInImage(imageWrapA, q.pytanie);
+  // === EKRAN 2: PREVIEW (kolumny C + D) ===
+  // Wypisz pytanie/komentarz z kolumny C zawsze
+  if (questionTextA) {
+    questionTextA.textContent = q.pytanie || '';
   }
 
-  // Ekran 3
-  imageB.style.display = '';
-  if (q.obrazek_b) {
-    loadImage(imageB, q.obrazek_b, q.odpowiedz, 'b');
+  // Załaduj media z kolumny D
+  if (q.obrazek_a) {
+    imageA.style.display = '';
+    loadImage(imageA, q.obrazek_a, 'a');
+  } else if (q.pytanie) {
+    // Jeśli brak media ale jest tekst - wyświetl tekst na czarnym tle
+    displayTextInImage(imageWrapA, q.pytanie);
   } else {
+    // Brak mediów i tekstu
+    imageWrapA.classList.add('no-image');
+    imageA.style.display = 'none';
+  }
+
+  // === EKRAN 3: OCENA (kolumny F + E) ===
+  // Wypisz odpowiedź/opis z kolumny E (zawsze, jeśli istnieje)
+  if (answerText) {
+    answerText.textContent = q.odpowiedz || '';
+    answerText.style.display = q.odpowiedz ? 'block' : 'none';
+  }
+
+  // Załaduj media do oceny z kolumny F
+  if (q.obrazek_b) {
+    imageB.style.display = '';
+    loadImage(imageB, q.obrazek_b, 'b');
+  } else if (q.odpowiedz) {
+    // Jeśli brak media ale jest tekst - wyświetl tekst na czarnym tle
     displayTextInImage(imageWrapB, q.odpowiedz);
+  } else {
+    // Brak mediów i tekstu
+    imageWrapB.classList.add('no-image');
+    imageB.style.display = 'none';
   }
 
   // Reset textarea i licznika
@@ -632,8 +672,8 @@ function loadImage(imgEl, name) {
     if (textContent) textContent.remove();
   }
 
-  // Lista formatów do próbowania: MP4 najpierw (może mieć dźwięk), potem obrazki
-  const formats = ['mp4', 'png', 'jpg', 'jpeg', 'webp'];
+  // Lista formatów do próbowania: MP4 najpierw, potem GIF, potem obrazki
+  const formats = ['mp4', 'webm', 'mpg', 'mpeg', 'gif', 'png', 'jpg', 'jpeg', 'webp'];
 
   // Tworz promise dla każdego formatu
   const formatPromises = formats.map(ext => {
@@ -664,13 +704,16 @@ function loadImage(imgEl, name) {
       return;
     }
 
-    // Znaleziono plik - sprawdź czy to MP4
-    if (found.ext === 'mp4') {
+    // Znaleziono plik - sprawdź format
+    const videoFormats = ['mp4', 'webm', 'mpg', 'mpeg'];
+    const isVideo = videoFormats.includes(found.ext);
+
+    if (isVideo) {
       // Wyświetl jako video
       if (imageWrap) {
         // Usuń stare video jeśli istnieje
         const oldVideos = imageWrap.querySelectorAll('video');
-        oldVideos.forEach(v => v.remove());
+        oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
 
         const video = document.createElement('video');
         video.src = found.filePath;
@@ -683,13 +726,13 @@ function loadImage(imgEl, name) {
         const isScreen2 = imageWrap.id === 'image-wrap-a';
 
         if (isScreen2) {
-          // Screen 2: Film 1a - bez dźwięku, bez controls, autoplay
+          // Screen 2: Film preview - bez dźwięku, bez controls, autoplay, loop
           video.muted = true;
           video.autoplay = true;
           video.controls = false;
           video.loop = true;
         } else {
-          // Screen 3: Film 2b - z dźwiękiem, z controls, autoplay
+          // Screen 3: Film do oceny - z dźwiękiem, z controls, autoplay, bez loopу
           video.controls = true;
           video.autoplay = true;
           video.muted = false;
@@ -700,9 +743,14 @@ function loadImage(imgEl, name) {
         imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
       }
     } else {
-      // Wyświetl jako obrazek
+      // Wyświetl jako obrazek (GIF, PNG, JPG, itp)
       imgEl.src = found.filePath;
       imgEl.style.display = 'block';
+      if (imageWrap) {
+        // Usuń stare video jeśli istnieje
+        const oldVideos = imageWrap.querySelectorAll('video');
+        oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
+      }
     }
   });
 }
@@ -963,7 +1011,11 @@ function saveProgress() {
   }
 
   downloadTxtFile(`ankieta-${userName.replace(/\s+/g, '_').replace(/[^\w_-]+/g, '') || 'wyniki'}.txt`);
-  showLoadingScreen();
+
+  // Przejdź do galerii wszystko.html po 500ms (aby pobieranie się rozpoczęło)
+  setTimeout(() => {
+    window.location.href = 'wszystko.html';
+  }, 500);
 }
 
 function goNext() {
@@ -1356,6 +1408,14 @@ function saveInspirationToSheet(inspirationsText) {
 
 function appendAnswerHistory(payload) {
   storedAnswers.push(payload);
+
+  // Pokaż "Zapisz wyniki" dopiero po pierwszym głosie (na ekranie 5)
+  if (storedAnswers.length === 1) {
+    const saveBtn = document.getElementById("save-progress-btn");
+    const downloadBtn = document.getElementById("download-btn");
+    if (saveBtn) saveBtn.style.display = 'block';
+    if (downloadBtn) downloadBtn.style.display = 'block';
+  }
 }
 
 function buildDownloadText() {
@@ -1363,24 +1423,63 @@ function buildDownloadText() {
     return `Brak zapisanych odpowiedzi.`;
   }
 
-  const header = `Arkusz ankiety - ${new Date().toLocaleString('pl-PL')}\n`;
-  const rows = storedAnswers.map((item, index) => {
-    return [
-      `Odpowiedź ${index + 1}`,
-      `Data: ${item.timestamp}`,
-      `Imię: ${item.name}`,
-      `ID pytania: ${item.question_id}`,
-      `Pytanie: ${item.question_text}`,
-      `Obrazek A: ${item.image_a}`,
-      `Obrazek B: ${item.image_b}`,
-      `Wybrana odpowiedź: ${item.answer}`,
-      `Metoda: ${item.answer_method}`,
-      `Sugestia: ${item.suggestion || 'brak'}`,
-      '---'
-    ].join('\n');
-  }).join('\n');
+  const header = `═══════════════════════════════════════════════════
+ANKIETA - PEŁNE WYNIKI
+═══════════════════════════════════════════════════
+Data: ${new Date().toLocaleString('pl-PL')}
+Ankietowany: ${userName || 'Anonimowy'}
+Liczba odpowiedzi: ${storedAnswers.length}
 
-  return `${header}\n${rows}\n`;
+═══════════════════════════════════════════════════
+ODPOWIEDZI SZCZEGÓŁOWE
+═══════════════════════════════════════════════════\n`;
+
+  const rows = storedAnswers.map((item, index) => {
+    return `
+▶ ODPOWIEDŹ ${index + 1}
+─────────────────────────────────────────────────
+Data i godzina: ${item.timestamp}
+ID pytania: ${item.question_id}
+Pytanie/Komentarz: ${item.question_text || 'brak'}
+Media A (preview): ${item.image_a || 'brak'}
+Media B (do oceny): ${item.image_b || 'brak'}
+Wybrana ocena: ${item.answer}
+Metoda zaznaczenia: ${item.answer_method}
+Sugestia/Uwaga: ${item.suggestion || 'brak'}`;
+  }).join('\n\n');
+
+  // Jeśli jest deepseek_response lub inspirations - dodaj je na koniec
+  let deepseekSection = '';
+  if (window.lastDeepseekResponse || window.lastInspirations) {
+    deepseekSection = `
+
+═══════════════════════════════════════════════════
+GENEROWANE TREŚCI (AI DEEPSEEK)
+═══════════════════════════════════════════════════`;
+
+    if (window.lastDeepseekResponse) {
+      deepseekSection += `
+
+▶ CHARAKTERYSTYKA HUMORU
+─────────────────────────────────────────────────
+${window.lastDeepseekResponse}`;
+    }
+
+    if (window.lastInspirations) {
+      deepseekSection += `
+
+▶ INSPIRACJE / ŻARTY
+─────────────────────────────────────────────────
+${window.lastInspirations}`;
+    }
+  }
+
+  return `${header}\n${rows}${deepseekSection}\n
+
+═══════════════════════════════════════════════════
+KONIEC RAPORTU
+═══════════════════════════════════════════════════
+`;
 }
 
 function normalizeAnswerLabel(answer) {

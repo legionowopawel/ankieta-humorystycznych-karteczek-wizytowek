@@ -1,0 +1,157 @@
+Arkusz ankiety - 17.05.2026, 19:29:27
+
+Odpowiedź 1
+Data: 2026-05-17T17:11:35.474Z
+Imię: gregory
+ID pytania: 1
+Pytanie: tak?
+Obrazek A: 
+Obrazek B: 
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: tak lub nie .. .po prostu , odpowiedź inna niż pytanie.
+lub zaprzeczam na wszystko.
+---
+Odpowiedź 2
+Data: 2026-05-17T17:14:35.338Z
+Imię: gregory
+ID pytania: 2
+Pytanie: Szwejk mówi: uprzejmie melduję Panie pułkowniku że przyszedłem zapytać czy dostałbym jakiś awans...Pułkownik: Ech Szwejk (wzdycha).
+Obrazek A: 2a
+Obrazek B: 2b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 3
+Data: 2026-05-17T17:17:36.506Z
+Imię: gregory
+ID pytania: 3
+Pytanie: czy  wiesz jak rosić szefa o podwyżkę?
+Obrazek A: 3a
+Obrazek B: 3b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 4
+Data: 2026-05-17T17:18:05.202Z
+Imię: gregory
+ID pytania: 4
+Pytanie: czy wiesz jak prosić szefa o podwyżkę
+Obrazek A: 4a
+Obrazek B: 4b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 5
+Data: 2026-05-17T17:18:10.298Z
+Imię: gregory
+ID pytania: 5
+Pytanie: Pewna dziewczynka jadła z mama obiadek...
+Obrazek A: 
+Obrazek B: 5b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 6
+Data: 2026-05-17T17:21:31.667Z
+Imię: gregory
+ID pytania: 6
+Pytanie: Švejk czyta spokojnym, naiwnym tonem: "VÍŠ, CO ŘEKNE ŠÉF, kaj se PopytaŠ o bonus? ?"
+Obrazek A: 
+Obrazek B: 6b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 7
+Data: 2026-05-17T17:21:55.010Z
+Imię: gregory
+ID pytania: 7
+Pytanie: Gdy życie przytłoczy problemami...
+Obrazek A: 
+Obrazek B: 7b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: faktycznie u mnie też gdy zjem 3 pizze to nic się nie zmieści ... nawet piwo.
+---
+Odpowiedź 8
+Data: 2026-05-17T17:23:41.962Z
+Imię: gregory
+ID pytania: 8
+Pytanie: 
+Obrazek A: 
+Obrazek B: 8b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: też miałem uczennice co szukała wymówek by nic nie robić.
+---
+Odpowiedź 9
+Data: 2026-05-17T17:24:18.979Z
+Imię: gregory
+ID pytania: 9
+Pytanie: 
+Obrazek A: 
+Obrazek B: 9b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 10
+Data: 2026-05-17T17:24:42.803Z
+Imię: gregory
+ID pytania: 10
+Pytanie: 
+Obrazek A: 
+Obrazek B: 10b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: też ma bałagan w kuchni..
+---
+Odpowiedź 11
+Data: 2026-05-17T17:25:07.818Z
+Imię: gregory
+ID pytania: 11
+Pytanie: 
+Obrazek A: 11a
+Obrazek B: 11b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 12
+Data: 2026-05-17T17:26:22.618Z
+Imię: gregory
+ID pytania: 12
+Pytanie: 
+Obrazek A: 
+Obrazek B: 12b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: znam takiego jednego wykładowce co też wydłuża i ma długą brodę.
+---
+Odpowiedź 13
+Data: 2026-05-17T17:26:33.314Z
+Imię: gregory
+ID pytania: 13
+Pytanie: Jeśli w lesie spotkasz wilka...
+Obrazek A: 13a
+Obrazek B: 13b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
+Odpowiedź 14
+Data: 2026-05-17T17:27:04.634Z
+Imię: gregory
+ID pytania: 14
+Pytanie: 
+Obrazek A: 14a
+Obrazek B: 14b
+Wybrana odpowiedź: podoba mi się
+Metoda: button
+Sugestia: brak
+---
