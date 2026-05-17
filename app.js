@@ -800,10 +800,11 @@ function loadImage(imgEl, name) {
           video.controls = false;
           video.loop = true;
         } else {
-          // Screen 3: Film do oceny - z dźwiękiem, z controls, BEZ AUTOPLAY (włączymy ręcznie)
+          // Screen 3: Film do oceny - z dźwiękiem, z controls, AUTOPLAY z  muted=true
+          // Po click zmienią muted=false aby słychać dźwięk
           video.controls = true;
-          video.autoplay = false;  // ✅ FIX: NIE autoplay - czeka na showScreen(3)
-          video.muted = false;
+          video.autoplay = true;  // ✅ FIX: Autoplay ON (required dla screen 3)
+          video.muted = true;     // ✅ FIX: Muted by default (autoplay policy)
           video.loop = false;
         }
 
@@ -840,10 +841,11 @@ function loadImage(imgEl, name) {
 screens[2].addEventListener("click", () => {
   showScreen(3);
 
-  // ✅ FIX: Włącz autoplay dla video na screen 3
+  // ✅ FIX: Unmute video na screen 3 (autoplay już działa z muted=true)
   const videos = imageWrapB?.querySelectorAll('video');
   if (videos && videos.length > 0) {
-    videos[0].play().catch(err => console.log('Autoplay failed (expected):', err));
+    videos[0].muted = false;
+    console.log('🔊 Unmuted video on screen 3');
   }
 });
 
