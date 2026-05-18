@@ -100,7 +100,6 @@ const charCount = document.getElementById("char-count");
 const retryBtn = document.getElementById("retry-btn");
 const errorMsg = document.getElementById("error-msg");
 const downloadBtn = document.getElementById("download-btn");
-const saveProgressBtn = document.getElementById("save-progress-btn");
 const resultsContainer = document.getElementById("results-container");
 
 /* =============================================
@@ -111,14 +110,16 @@ function showScreen(n) {
   screens[n].classList.add("active");
   window.scrollTo(0, 0);
 
-  // ✅ FIX: Gdy przechodzisz do screen 2, zatrzymaj video z screen 3
-  if (n === 2) {
-    const videos = imageWrapB?.querySelectorAll('video');
-    if (videos && videos.length > 0) {
-      videos[0].pause();
-      videos[0].currentTime = 0;
+  // 🎬 Zatrzymaj wszystkie MP4 gdy przechodzisz między ekranami
+  // (oprócz docelowego ekranu który może mieć własne MP4)
+  [imageWrapA, imageWrapB].forEach(wrap => {
+    if (wrap) {
+      const videos = wrap.querySelectorAll('video');
+      videos.forEach(v => {
+        v.pause();
+      });
     }
-  }
+  });
 }
 
 /* =============================================
@@ -599,6 +600,7 @@ function showQuestion(index) {
   // Wypisz pytanie/komentarz z kolumny C zawsze
   if (questionTextA) {
     questionTextA.textContent = q.pytanie || '';
+    questionTextA.style.display = q.pytanie ? 'block' : 'none';
   }
 
   // Załaduj media z kolumny D
@@ -719,7 +721,8 @@ function autoScaleText(textEl, container) {
 }
 
 // Próbuje wszystkie formaty równolegle: mp4, png, jpg, jpeg, webp
-function loadImage(imgEl, name) {
+// ZMIENIONE: Zaakceptuj pełne nazwy z rozszerzeniami (np. "3a.png") lub bez (np. "3a")
+function loadImage(imgEl, name, screenType) {
   if (!name) { imgEl.src = ""; return; }
 
   const bust = "?v=" + (window._imageCacheBust || (window._imageCacheBust = Date.now()));
@@ -732,125 +735,150 @@ function loadImage(imgEl, name) {
     if (textContent) textContent.remove();
   }
 
-  // Lista formatów do próbowania: MP4 najpierw, potem GIF, potem obrazki
-  const formats = ['mp4', 'webm', 'mpg', 'mpeg', 'gif', 'png', 'jpg', 'jpeg', 'webp'];
+  // Sprawdzenie czy nazwa już zawiera rozszerzenie
+  const hasExtension = name.includes('.');
 
-  // Tworz promise dla każdego formatu
-  const formatPromises = formats.map(ext => {
-    const filePath = `images/${name}.${ext}${bust}`;
-    return fetch(filePath, { method: 'HEAD' })
+  if (hasExtension) {
+    // Nazwa już zawiera rozszerzenie - wczytaj bezpośrednio
+    const filePath = `images/${name}${bust}`;
+    const ext = name.split('.').pop().toLowerCase();
+
+    fetch(filePath, { method: 'HEAD' })
       .then(res => {
-        if (res.ok) {
-          return { ext, filePath, ok: true };
-        }
-        throw new Error(`${ext} not found`);
+        if (!res.ok) throw new Error('File not found');
+        loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType);
       })
-      .catch(() => ({ ext, filePath, ok: false }));
-  });
-
-  // Czekaj na wszystkie i weź pierwszy znaleziony
-  Promise.all(formatPromises).then(results => {
-    const found = results.find(r => r.ok);
-
-    if (!found) {
-      // Żaden plik nie znaleziony
-      imgEl.src = "";
-      imgEl.alt = "Brak obrazka";
-      imgEl.style.display = 'none';
-      if (imageWrap) {
-        imageWrap.classList.add('no-image');
-        imageWrap.style.display = 'none';
-      }
-      return;
-    }
-
-    // Znaleziono plik - sprawdź format
-    const videoFormats = ['mp4', 'webm', 'mpg', 'mpeg'];
-    const isVideo = videoFormats.includes(found.ext);
-
-    if (isVideo) {
-      // Wyświetl jako video
-      if (imageWrap) {
-        // Usuń stare video jeśli istnieje
-        const oldVideos = imageWrap.querySelectorAll('video');
-        oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
-
-        const video = document.createElement('video');
-        video.src = found.filePath;
-        video.style.width = '100%';
-        video.style.height = 'auto';
-        video.style.maxHeight = '70vh';
-        video.style.borderRadius = '12px';
-
-        // ✅ Onerror handler dla video
-        video.onerror = (err) => {
-          console.error(`❌ Błąd ładowania video ${found.filePath}:`, err);
-          video.remove();
-          imgEl.style.display = 'none';
-          if (imageWrap) {
-            imageWrap.classList.add('no-image');
-          }
-        };
-
-        // Sprawdzenie czy to film z ekranu 2 (obrazek_a) czy z ekranu 3 (obrazek_b)
-        const isScreen2 = imageWrap.id === 'image-wrap-a';
-
-        if (isScreen2) {
-          // Screen 2: Film z dźwiękiem, bez controls, autoplay, loop
-          video.muted = false;   // ✅ FIX: Z DŹWIĘKIEM!
-          video.autoplay = true;
-          video.controls = false;
-          video.loop = true;
-        } else {
-          // Screen 3: Film do oceny - z dźwiękiem, z controls, AUTOPLAY z  muted=true
-          // Po click zmienią muted=false aby słychać dźwięk
-          video.controls = true;
-          video.autoplay = true;  // ✅ FIX: Autoplay ON (required dla screen 3)
-          video.muted = true;     // ✅ FIX: Muted by default (autoplay policy)
-          video.loop = false;
-        }
-
+      .catch(err => {
+        console.error(`❌ Błąd wczytywania ${name}:`, err);
+        imgEl.src = "";
         imgEl.style.display = 'none';
-        imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
+        if (imageWrap) imageWrap.classList.add('no-image');
+      });
+  } else {
+    // Brak rozszerzenia - próbuj wszystkie formaty
+    const formats = ['mp4', 'webm', 'mpg', 'mpeg', 'gif', 'png', 'jpg', 'jpeg', 'webp'];
+    const formatPromises = formats.map(ext => {
+      const filePath = `images/${name}.${ext}${bust}`;
+      return fetch(filePath, { method: 'HEAD' })
+        .then(res => {
+          if (res.ok) {
+            return { ext, filePath, ok: true };
+          }
+          throw new Error(`${ext} not found`);
+        })
+        .catch(() => ({ ext, filePath, ok: false }));
+    });
+
+    Promise.all(formatPromises).then(results => {
+      const found = results.find(r => r.ok);
+
+      if (!found) {
+        imgEl.src = "";
+        imgEl.alt = "Brak obrazka";
+        imgEl.style.display = 'none';
+        if (imageWrap) {
+          imageWrap.classList.add('no-image');
+          imageWrap.style.display = 'none';
+        }
+        return;
       }
-    } else {
-      // Wyświetl jako obrazek (GIF, PNG, JPG, itp)
-      imgEl.src = found.filePath;
-      // ✅ Onerror handler dla img
-      imgEl.onerror = () => {
-        console.error(`❌ Błąd ładowania obrazka ${found.filePath}`);
+
+      loadImageWithFormat(imgEl, found.filePath, found.ext, imageWrap, screenType);
+    }).catch(err => {
+      console.error(`❌ Błąd w loadImage(${name}):`, err);
+      if (imageWrap) imageWrap.classList.add('no-image');
+    });
+  }
+}
+
+// Funkcja pomocnicza do wczytywania mediów
+function loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType = 'a') {
+  const videoFormats = ['mp4', 'webm', 'mpg', 'mpeg'];
+  const isVideo = videoFormats.includes(ext);
+
+  if (isVideo) {
+    // Wyświetl jako video
+    if (imageWrap) {
+      const oldVideos = imageWrap.querySelectorAll('video');
+      oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
+
+      const video = document.createElement('video');
+      video.src = filePath;
+      video.style.width = '100%';
+      video.style.height = 'auto';
+      video.style.maxHeight = '70vh';
+      video.style.borderRadius = '12px';
+
+      video.onerror = (err) => {
+        console.error(`❌ Błąd ładowania video ${filePath}:`, err);
+        video.remove();
         imgEl.style.display = 'none';
         if (imageWrap) {
           imageWrap.classList.add('no-image');
         }
       };
-      imgEl.style.display = 'block';
-      if (imageWrap) {
-        // Usuń stare video jeśli istnieje
-        const oldVideos = imageWrap.querySelectorAll('video');
-        oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
+
+      const isScreen2 = imageWrap.id === 'image-wrap-a';
+
+      if (isScreen2) {
+        // Screen 2: Film z przyciskiem play (BEZ autoplay)
+        video.muted = false;
+        video.autoplay = false;  // 🔴 ZMIENIONE: Brak autoplay
+        video.controls = true;   // 🔴 ZMIENIONE: Pokaz controls z przyciskiem play
+        video.loop = true;
+      } else {
+        // Screen 3: Film do oceny - z controls
+        video.controls = true;
+        video.autoplay = false;  // 🔴 ZMIENIONE: Brak autoplay
+        video.muted = true;
+        video.loop = false;
       }
+
+      imgEl.style.display = 'none';
+      imgEl.parentNode.insertBefore(video, imgEl.nextSibling);
     }
-  }).catch(err => {
-    console.error(`❌ Błąd w loadImage(${name}):`, err);
-    if (imageWrap) imageWrap.classList.add('no-image');
-  });
+  } else {
+    // Wyświetl jako obrazek
+    imgEl.src = filePath;
+    imgEl.onerror = () => {
+      console.error(`❌ Błąd ładowania obrazka ${filePath}`);
+      imgEl.style.display = 'none';
+      if (imageWrap) {
+        imageWrap.classList.add('no-image');
+      }
+    };
+    imgEl.style.display = 'block';
+    if (imageWrap) {
+      const oldVideos = imageWrap.querySelectorAll('video');
+      oldVideos.forEach(v => { v.pause(); v.src = ''; v.remove(); });
+    }
+  }
 }
 
 /* =============================================
-   EKRAN 2 — kliknięcie → Ekran 3
+   EKRAN 2 — kliknięcie przycisku → Ekran 3
 ============================================= */
-screens[2].addEventListener("click", () => {
-  showScreen(3);
+const btnNextOption = document.getElementById('btn-next-option');
+if (btnNextOption) {
+  btnNextOption.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Zatrzymaj MP4 na ekranie 2 przed przejściem
+    const videos = imageWrapA?.querySelectorAll('video');
+    if (videos && videos.length > 0) {
+      videos[0].pause();
+      console.log('⏹️  Zatrzymano video na screen 2');
+    }
+    showScreen(3);
 
-  // ✅ FIX: Unmute video na screen 3 (guard clause)
-  if (!imageWrapB) return; // ✅ Guard clause
-  const videos = imageWrapB?.querySelectorAll('video');
-  if (videos && videos.length > 0) {
-    videos[0].muted = false;
-    console.log('🔊 Unmuted video on screen 3');
-  }
-});
+    // ✅ FIX: Unmute video na screen 3
+    if (!imageWrapB) return;
+    const videosB = imageWrapB?.querySelectorAll('video');
+    if (videosB && videosB.length > 0) {
+      videosB[0].muted = false;
+      console.log('🔊 Unmuted video on screen 3');
+    }
+  });
+}
 
 backBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1106,10 +1134,6 @@ downloadBtn?.addEventListener("click", () => {
   downloadTxtFile();
 });
 
-saveProgressBtn?.addEventListener("click", () => {
-  saveProgress();
-});
-
 function saveProgress() {
   if (storedAnswers.length === 0) {
     alert("Nie ma jeszcze zapisanych odpowiedzi do zapisania. Odpowiedz na przynajmniej jedno pytanie.");
@@ -1328,11 +1352,14 @@ async function generateThankYouMessage() {
         const thankPart = (parts[0] || data.message).trim();
         const szwejkPart = (parts[1] || '').trim();
 
+        // Zapisz całą odpowiedź dla pobierania
+        window.lastDeepseekResponse = data.message;
+
         if (thankYouEl) {
           thankYouEl.innerHTML =
             `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">${thankPart}</em>` +
             (szwejkPart
-            ? `<br><br><span style="font-size:0.9rem; color:#fff; line-height:1.75; display:block; margin-top:10px; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 ${szwejkPart}</span>`
+            ? `<br><br><span style="font-size:0.9rem; color:var(--ink); line-height:1.75; display:block; margin-top:10px; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 ${szwejkPart}</span>`
               : '');
         }
         // Zapisz odpowiedź DeepSeek do kolumny K (przy ostatniej odpowiedzi ankietowanego)
@@ -1341,7 +1368,7 @@ async function generateThankYouMessage() {
       } else if (data.status === 'error') {
         console.warn('⚠️ GAS zwrócił błąd:', data.message);
         if (thankYouEl) {
-          thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br><span style="font-size:0.88rem; color:#fff; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Ja zawsze mówię prawdę, panie oberlejtnant — szczególnie wtedy, gdy nikt nie pyta."</em></span>`;
+          thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione. Paweł prosił, by przekazać Ci, że bardzo ceni Twoje zaangażowanie.</em><br><br><span style="font-size:0.88rem; color:var(--ink); font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Ja zawsze mówię prawdę, panie oberlejtnant — szczególnie wtedy, gdy nikt nie pyta."</em></span>`;
         }
       }
     } else {
@@ -1351,7 +1378,7 @@ async function generateThankYouMessage() {
     // DeepSeek jest opcjonalny — błąd nie blokuje wyświetlenia wyników
     console.warn('⚠️ Nie udało się wygenerować wiadomości DeepSeek (sprawdź wdrożenie GAS):', err.message);
     if (thankYouEl) {
-      thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br><span style="font-size:0.88rem; color:#fff; font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Każda ankieta to jak wizyta u doktora — człowiek nie wie, co mu znajdą, ale wychodzi spokojniejszy."</em></span>`;
+      thankYouEl.innerHTML = `<em style="color:#fff; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny – Twoje komentarze są dla mnie nieocenione.</em><br><br><span style="font-size:0.88rem; color:var(--ink); font-style:italic; border-left:3px solid #f7c948; padding-left:12px;">🪖 A dzielny Wojak Szwejk mawiał: <em>„Każda ankieta to jak wizyta u doktora — człowiek nie wie, co mu znajdą, ale wychodzi spokojniejszy."</em></span>`;
     }
   }
   return null;
@@ -1384,38 +1411,56 @@ function saveDeepSeekToSheet(deepseekMessage) {
 async function generateInspirations() {
   if (storedAnswers.length === 0) return null;
 
-  // Zbierz wszystkie komentarze i oceny
-  const suggestions = storedAnswers
-    .filter(a => a.suggestion && a.suggestion.trim().length > 0)
-    .map((a, i) => `${i + 1}. "${a.suggestion}"`)
-    .join('\n');
+  // Zbierz tylko odpowiedzi z komentarzami
+  const answersWithSuggestions = storedAnswers.filter(a => a.suggestion && a.suggestion.trim().length > 0);
 
-  if (!suggestions || suggestions.trim().length === 0) {
+  if (answersWithSuggestions.length === 0) {
     return null; // Brak sugestii, brak inspiracji
   }
 
-  const surveyContext = storedAnswers.map((a, idx) => {
-    const rating = a.answer === 'podoba mi się' ? '👍 Podoba' :
-      a.answer === 'nie podoba mi się' ? '👎 Neutral' : '❌ Nie podoba';
-    return `- "${a.question_text}" → ${rating}`;
+  // Zbuduj kontekst pytań z komentarzami
+  const contextWithAnswers = answersWithSuggestions.map((a, idx) => {
+    return `Pytanie ${idx + 1}: [${a.question_text}] + [${a.answer}] → Ankietowany napisał: "${a.suggestion.trim()}"`;
   }).join('\n');
 
-  const prompt = `Użytkownik "${userName}" wypełnił ankietę humorystyczną i pozostawił poniższe komentarze-sugestie:
+  // Specjalna obsługa dla jednego komentarza - 10 żartów
+  const isOnlyOneComment = answersWithSuggestions.length === 1;
 
-KOMENTARZE UŻYTKOWNIKA:
-${suggestions}
+  const prompt = isOnlyOneComment
+    ? `Użytkownik "${userName}" oceniał rysunki humorystyczne i zostawił następujący komentarz:
 
-PYTANIA Z ANKIETY (kontekst):
-${surveyContext}
+PYTANIE: ${answersWithSuggestions[0].question_text}
+OCENA: ${answersWithSuggestions[0].answer}
+KOMENTARZ: "${answersWithSuggestions[0].suggestion.trim()}"
 
-Twoim zadaniem jest ODKRYCIE 20 ORYGINALNYCH, NIEPOWATARZALNYCH INSPIRACJI NA ŻARTY I HUMOR na podstawie tych komentarzy. 
+Twoim zadaniem jest ODKRYCIE 10 ORYGINALNYCH, ZUPEŁNIE RÓŻNYCH INSPIRACJI NA ŻARTY I HUMOR na podstawie tego komentarza.
 
 INSTRUKCJE:
 1. Każda inspiracja powinna być KRÓTKA (1–2 linijki), ZWIĘZŁA, ZASKAKUJĄCA
 2. Odkryj NOWE WYMIARY HUMORU, NIEOCZEKIWANE POŁĄCZENIA, ABSURDALNE PERMUTACJE
 3. Będą to raczej HACZYKI, POINTY, IRÓNIE, nie pełne żarty
 4. Każda inspiracja powinna być na NOWEJ LINII, numerowana: 1. ...  2. ...  3. ... itd.
-5. Punckt powinien być TREŚCIWY, bliski stylu absurdu, dystansu, głębokich prawd o człowieku
+5. Punkt powinien być TREŚCIWY, bliski stylu absurdu, dystansu, głębokich prawd o człowieku
+6. Każda kolejna inspiracja powinna POSUWAĆ DALEJ granicę absurdu
+7. Jeśli się da — nawiąż do polskiej rzeczywistości, społeczeństwa, anomalii
+8. Bądź BEZPIECZNY ale ODWAŻNY — nie bój się drwiny z powszechnych zjawisk
+9. Każdy żart powinien być CAŁKOWICIE ODMIENNY - różne tematy, różne podejścia
+
+WYJŚCIE: zwróć DOKŁADNIE 10 numerowanych punktów, BEZ nagłówka, BEZ żadnych dodatkowych wyjaśnień, TYLKO inspiracje.`
+
+    : `Użytkownik "${userName}" oceniał rysunki humorystyczne i pozostawił poniższe komentarze:
+
+KOMENTARZE Z PYTAŃ:
+${contextWithAnswers}
+
+Twoim zadaniem jest ODKRYCIE 20 ORYGINALNYCH, NIEPOWATARZALNYCH INSPIRACJI NA ŻARTY I HUMOR na podstawie tych komentarzy.
+
+INSTRUKCJE:
+1. Każda inspiracja powinna być KRÓTKA (1–2 linijki), ZWIĘZŁA, ZASKAKUJĄCA
+2. Odkryj NOWE WYMIARY HUMORU, NIEOCZEKIWANE POŁĄCZENIA, ABSURDALNE PERMUTACJE
+3. Będą to raczej HACZYKI, POINTY, IRÓNIE, nie pełne żarty
+4. Każda inspiracja powinna być na NOWEJ LINII, numerowana: 1. ...  2. ...  3. ... itd.
+5. Punkt powinien być TREŚCIWY, bliski stylu absurdu, dystansu, głębokich prawd o człowieku
 6. Każda kolejna inspiracja powinna POSUWAĆ DALEJ granicę absurdu
 7. Jeśli się da — nawiąż do polskiej rzeczywistości, społeczeństwa, anomalii
 8. Bądź BEZPIECZNY ale ODWAŻNY — nie bój się drwiny z powszechnych zjawisk
@@ -1436,6 +1481,8 @@ WYJŚCIE: zwróć DOKŁADNIE 20 numerowanych punktów, BEZ nagłówka, BEZ żadn
         console.log('✅ Inspiracje wygenerowane:\n' + data.message);
         // Zapisz inspiracje do kolumny L
         saveInspirationToSheet(data.message);
+        // Zapisz także do okna dla pobierania
+        window.lastInspirations = data.message;
         return data.message;
       } else {
         console.warn('⚠️ DeepSeek zwrócił błąd inspiracji:', data.message);
@@ -1515,11 +1562,9 @@ function saveInspirationToSheet(inspirationsText) {
 function appendAnswerHistory(payload) {
   storedAnswers.push(payload);
 
-  // Pokaż "Zapisz wyniki" dopiero po pierwszym głosie (na ekranie 5)
+  // Pokaż "Pobierz wyniki" dopiero po pierwszym głosie (na ekranie 5)
   if (storedAnswers.length === 1) {
-    const saveBtn = document.getElementById("save-progress-btn");
     const downloadBtn = document.getElementById("download-btn");
-    if (saveBtn) saveBtn.style.display = 'block';
     if (downloadBtn) downloadBtn.style.display = 'block';
   }
 }
@@ -1554,7 +1599,7 @@ Metoda zaznaczenia: ${item.answer_method}
 Sugestia/Uwaga: ${item.suggestion || 'brak'}`;
   }).join('\n\n');
 
-  // Jeśli jest deepseek_response lub inspirations - dodaj je na koniec
+  // Zbuduj sekcję AI
   let deepseekSection = '';
   if (window.lastDeepseekResponse || window.lastInspirations) {
     deepseekSection = `
@@ -1564,17 +1609,30 @@ GENEROWANE TREŚCI (AI DEEPSEEK)
 ═══════════════════════════════════════════════════`;
 
     if (window.lastDeepseekResponse) {
+      // Rozdziel podziękowanie i Szwejka
+      const parts = window.lastDeepseekResponse.split('|||');
+      const thankPart = (parts[0] || window.lastDeepseekResponse).trim();
+      const szwejkPart = (parts[1] || '').trim();
+
       deepseekSection += `
 
-▶ CHARAKTERYSTYKA HUMORU
+▶ PODZIĘKOWANIE
 ─────────────────────────────────────────────────
-${window.lastDeepseekResponse}`;
+${thankPart}`;
+
+      if (szwejkPart) {
+        deepseekSection += `
+
+▶ OPOWIEŚĆ SZWEJKA
+─────────────────────────────────────────────────
+${szwejkPart}`;
+      }
     }
 
     if (window.lastInspirations) {
       deepseekSection += `
 
-▶ INSPIRACJE / ŻARTY
+▶ OTO ŻARTY KTÓRE POWSTAŁY TERAZ DZIĘKI TOBIE
 ─────────────────────────────────────────────────
 ${window.lastInspirations}`;
     }

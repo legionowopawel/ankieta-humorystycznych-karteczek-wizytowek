@@ -103,10 +103,10 @@
       <div class="image-wrap" id="image-wrap-a">
         <img id="image-a" src="" alt="Obrazek A" />
       </div>
-      <p class="tap-hint">
-        <span class="tap-icon">👆</span>
-        Dotknij ekranu, aby zobaczyć drugą opcję
-      </p>
+      <button class="btn-next-option" id="btn-next-option">
+        <span class="btn-icon">👁️</span>
+        Pokaż drugą opcję
+      </button>
     </div>
   </div>
 
@@ -142,7 +142,7 @@
       </div>
       <div class="suggestion-wrap">
         <label for="suggestion-input" class="suggestion-label">Napisz sugestię (opcjonalnie) a następnie zatwierdź wybierając
-          wybory poniżej</label>
+          wybory powyżej</label>
         <textarea id="suggestion-input" class="suggestion-input" maxlength="1000" placeholder="Twój komentarz..."></textarea>
         <div class="char-counter"><span id="char-count">0</span>/1000</div>
       </div>
@@ -177,7 +177,6 @@
         <button class="btn-secondary" id="inspirations-expand-btn" style="display:none;">📖 Czytaj dalej...</button>
         <div class="inspirations-full" id="inspirations-full" style="display:none;"></div>
       </div>
-      <button class="btn-primary" id="save-progress-btn" style="display:none;">Zapisz wyniki i zakończ</button>
       <button class="btn-primary" id="download-btn" style="display:none;">Pobierz wyniki jako TXT</button>
       <div class="all-media-btn" onclick="window.location.href='wszystko.html'"
         style="display: inline-block; width: 100%; margin-top: 12px; cursor: pointer;">
