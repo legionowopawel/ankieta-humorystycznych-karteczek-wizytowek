@@ -670,13 +670,11 @@ function showQuestion(index) {
   if (nextIndex < questions.length) {
     const nextQ = questions[nextIndex];
     if (nextQ.obrazek_a) {
-      const formats = ['mp4', 'webm', 'mpg', 'mpeg', 'gif', 'png', 'jpg', 'jpeg', 'webp'];
-      formats.forEach(ext => {
-        const link = document.createElement('link');
-        link.rel = 'prefetch';
-        link.href = `images/${nextQ.obrazek_a}.${ext}`;
-        document.head.appendChild(link);
-      });
+      // nextQ.obrazek_a już zawiera rozszerzenie (np. "2a.mp4")
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = `images/${nextQ.obrazek_a}`;
+      document.head.appendChild(link);
     }
   }
 }
@@ -725,6 +723,45 @@ function autoScaleText(textEl, container) {
     fontSize--;
     textEl.style.fontSize = fontSize + 'px';
   }
+}
+
+/* Otwórz tekst w lightboxie (pełnoekranowy podgląd) */
+function openTextLightbox(text) {
+  const lb = document.getElementById('lightbox');
+  if (!lb) return;
+
+  const lbImg = document.getElementById('lightbox-img');
+  lbImg.style.display = 'none';
+
+  // Usuń stare video jeśli istnieje
+  let video = lb.querySelector('video');
+  if (video) video.remove();
+
+  // Sprawdź czy już mamy element tekstowy
+  let textContent = lb.querySelector('.lightbox-text-content');
+  if (!textContent) {
+    textContent = document.createElement('div');
+    textContent.className = 'lightbox-text-content';
+    textContent.style.color = '#fff';
+    textContent.style.fontSize = '18px';
+    textContent.style.lineHeight = '1.6';
+    textContent.style.textAlign = 'center';
+    textContent.style.maxWidth = '90vw';
+    textContent.style.maxHeight = '85vh';
+    textContent.style.overflow = 'auto';
+    textContent.style.padding = '20px';
+    textContent.style.whiteSpace = 'pre-wrap';
+    textContent.style.wordWrap = 'break-word';
+    lb.querySelector('.lightbox-inner').appendChild(textContent);
+  }
+
+  // Ustaw tekst
+  textContent.textContent = text;
+  textContent.style.display = 'block';
+
+  // Otwórz lightbox
+  lb.classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
 
 // Próbuje wszystkie formaty równolegle: mp4, png, jpg, jpeg, webp
@@ -778,6 +815,8 @@ function loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType = 'a') 
       video.classList.add('survey-video');
       video.style.objectFit = 'contain';
       video.style.display = 'block';
+      video.crossOrigin = 'anonymous';
+      video.playsinline = true;
 
       video.onerror = (err) => {
         console.error(`❌ Błąd ładowania video ${filePath}:`, err);
@@ -795,13 +834,15 @@ function loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType = 'a') 
         video.muted = false;
         video.autoplay = false;  // BEZ autoplay
         video.controls = true;   // Pokaz controls z przyciskiem play
-        video.loop = false;      // 🔴 ZMIENIONE: Tylko raz, bez pętli
+        video.loop = false;      // Tylko raz, bez pętli
+        video.preload = 'auto';  // Preload metadata
       } else {
         // Screen 3: Film do oceny - z controls
         video.controls = true;
-        video.autoplay = false;  // 🔴 ZMIENIONE: Brak autoplay
+        video.autoplay = false;
         video.muted = true;
         video.loop = false;
+        video.preload = 'auto';
       }
 
       imgEl.style.display = 'none';
@@ -1882,27 +1923,20 @@ function downloadLightboxMedia() {
   const bust = window._imageCacheBust || Date.now();
   const imageName = currentLightboxMedia;
 
-  // Najpierw spróbuj ściągnąć MP4
-  const videoPath = `images/${imageName}.mp4?v=${bust}`;
-  const imgPath = `images/${imageName}.png?v=${bust}`;
+  // imageName już zawiera rozszerzenie (np. "2a.mp4" lub "3a.png")
+  const filePath = `images/${imageName}?v=${bust}`;
 
-  fetch(videoPath, { method: 'HEAD' })
+  fetch(filePath, { method: 'HEAD' })
     .then(res => {
       if (res.ok) {
-        // Ściągnij video
-        downloadFile(videoPath, `${imageName}.mp4`);
+        // Ściągnij plik
+        downloadFile(filePath, imageName);
       } else {
-        throw new Error('Video not found');
+        throw new Error('File not found');
       }
     })
     .catch(() => {
-      // Spróbuj PNG
-      const link = document.createElement('a');
-      link.href = imgPath;
-      link.download = `${imageName}.png`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      console.error('❌ Nie udało się ściągnąć pliku:', imageName);
     });
 }
 
