@@ -422,30 +422,36 @@ body {
 .image-wrap {
   width: 100%;
   background: var(--surface);
-    border-radius: var(--radius);
+  border-radius: var(--radius);
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 20px;
   box-shadow: var(--shadow-lg);
-    position: relative;
+  position: relative;
   min-height: 300px;
-    max-height: 70vh;
+  max-height: 70vh;
+  aspect-ratio: auto;
 }
 
 .image-wrap img,
 .image-wrap video {
   width: 100%;
-  height: auto;
+  height: 100%;
     object-fit: contain;
     display: block;
   max-height: 70vh;
+  max-width: 100%;
 }
 
 .image-wrap img {
   user-select: none;
   -webkit-user-drag: none;
+  width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
 }
 
 /* Gdy brak obrazka — ukryj całą image-wrap */
@@ -902,9 +908,10 @@ body {
 }
 .thanks-body {
   font-size: 1rem;
-  color: #000000;
+  color: #d4a853;
   line-height: 1.6;
   font-style: italic;
+  font-weight: 600;
 }
 
 .results-panel {
