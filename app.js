@@ -735,60 +735,24 @@ function loadImage(imgEl, name, screenType) {
     if (textContent) textContent.remove();
   }
 
-  // Sprawdzenie czy nazwa już zawiera rozszerzenie
-  const hasExtension = name.includes('.');
+  // UPROSZCZENIE: Zakładamy że name zawsze zawiera rozszerzenie z Google Sheets
+  // (kolumna D i F zawierają pełne nazwy plików: 3a.png, 2a.mp4, 12b.jpg, etc.)
 
-  if (hasExtension) {
-    // Nazwa już zawiera rozszerzenie - wczytaj bezpośrednio
-    const filePath = `images/${name}${bust}`;
-    const ext = name.split('.').pop().toLowerCase();
+  const filePath = `images/${name}${bust}`;
+  const ext = name.split('.').pop().toLowerCase();
 
-    fetch(filePath, { method: 'HEAD' })
-      .then(res => {
-        if (!res.ok) throw new Error('File not found');
-        loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType);
-      })
-      .catch(err => {
-        console.error(`❌ Błąd wczytywania ${name}:`, err);
-        imgEl.src = "";
-        imgEl.style.display = 'none';
-        if (imageWrap) imageWrap.classList.add('no-image');
-      });
-  } else {
-    // Brak rozszerzenia - próbuj wszystkie formaty
-    const formats = ['mp4', 'webm', 'mpg', 'mpeg', 'gif', 'png', 'jpg', 'jpeg', 'webp'];
-    const formatPromises = formats.map(ext => {
-      const filePath = `images/${name}.${ext}${bust}`;
-      return fetch(filePath, { method: 'HEAD' })
-        .then(res => {
-          if (res.ok) {
-            return { ext, filePath, ok: true };
-          }
-          throw new Error(`${ext} not found`);
-        })
-        .catch(() => ({ ext, filePath, ok: false }));
-    });
-
-    Promise.all(formatPromises).then(results => {
-      const found = results.find(r => r.ok);
-
-      if (!found) {
-        imgEl.src = "";
-        imgEl.alt = "Brak obrazka";
-        imgEl.style.display = 'none';
-        if (imageWrap) {
-          imageWrap.classList.add('no-image');
-          imageWrap.style.display = 'none';
-        }
-        return;
-      }
-
-      loadImageWithFormat(imgEl, found.filePath, found.ext, imageWrap, screenType);
-    }).catch(err => {
-      console.error(`❌ Błąd w loadImage(${name}):`, err);
+  // Najpierw spróbuj załadować plik
+  fetch(filePath, { method: 'HEAD' })
+    .then(res => {
+      if (!res.ok) throw new Error('File not found');
+      loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType);
+    })
+    .catch(err => {
+      console.error(`❌ Błąd wczytywania ${name}:`, err);
+      imgEl.src = "";
+      imgEl.style.display = 'none';
       if (imageWrap) imageWrap.classList.add('no-image');
     });
-  }
 }
 
 // Funkcja pomocnicza do wczytywania mediów
@@ -808,6 +772,9 @@ function loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType = 'a') 
       video.style.height = 'auto';
       video.style.maxHeight = '70vh';
       video.style.borderRadius = '12px';
+      video.style.objectFit = 'contain';
+      video.style.display = 'block';
+      video.style.margin = '0 auto';
 
       video.onerror = (err) => {
         console.error(`❌ Błąd ładowania video ${filePath}:`, err);
@@ -1367,6 +1334,11 @@ async function generateThankYouMessage() {
 
   const prompt = `Użytkownik (${userName}) wypełnił ankietę oceniającą humor i pozostawił następujące komentarze:\n\n${contextWithQuestionsAndComments}\n\nNapisz dwie rzeczy — oddziel je znacznikiem |||:\n\n1. PODZIĘKOWANIE (2 zdania): Podziękuj ciepło od Pawła. WAŻNE: Jeśli imię użytkownika to "${userName}", zacznij podziękowaniem zwróconym bezpośrednio do tej osoby po imieniu w zdrobniałej formie POWTÓRZONEJ DWUKROTNIE Z RÓŻNYMI STOPNIOWANIAMI (np. jeśli Paweł: "Dziękuję Ci Pawle, Pawełku, Pawełeczku za..."). Pochwal wgląd w humor, nawiąż do komentarzy. Bądź szczery i ze smakiem.\n\n2. SZWEJK (6–8 zdań, DWA RAZY DŁUŻSZE): Napisz jako narrator opowiadający historię w stylu Jaroslava Haška. Postać: młody Polak Szwejk żyjący dzisiaj w Polsce, naiwny pozornie ale głęboko mądry. Gatunek: opowiadanie-anegdota opartą BEZPOŚREDNIO na komentarzach ankietowanego i pytaniach, które oceniał. Dodaj dialogi, emocjonalne intonacje pokazane emotikonkami (😏 🤔 😅 itd), refleksje drwiące z absurdu świata. Narrator mówi: "A dzielny Szwejk — gdybyś go poznał dzisiaj w Polsce — powiedzielibyśmy w takich słowach: [tu powstała sytuacja z humorystycznym dialogiem Szwejka pasującym do tematu komentarza]." Zakończ typową Szwejkowską puentą pełną pozornej naiwności i głębokich prawd.\n\nFormat: PODZIĘKOWANIE|||SZWEJK\nBez żadnych innych znaczników, bez markdown.`;
 
+  // Pokaż loading indicator — czerwona wiadomość Before DeepSeek call
+  if (thankYouEl) {
+    thankYouEl.innerHTML = `<em style="color: #d4a853; font-size:0.95rem; line-height:1.6;">Serdecznie dziękuję Ci za poświęcony czas i wnikliwe oceny...</em><br><br><span style="font-size:0.9rem; color:red; line-height:1.75; display:block; margin-top:10px; font-style:italic;">⏳ Trwa generowanie personalizowanej wiadomości...</span>`;
+  }
+
   try {
     // Wywołaj DeepSeek przez Google Apps Script — klucz API jest bezpieczny po stronie serwera
     const response = await fetch(WEBHOOK_URL, {
@@ -1827,43 +1799,23 @@ function loadImagesSequentially(results, bust) {
     if (resultRow) {
       const thumbDiv = resultRow.querySelector('.result-thumb');
 
-      // Spróbuj MP4 najpierw
-      const videoPath = `images/${item.image_b}.mp4?v=${bust}`;
-      fetch(videoPath, { method: 'HEAD' })
-        .then(res => {
-          if (res.ok) {
-            // Jest video
-            thumbDiv.innerHTML = `<video style="width:100%; height:100%; object-fit:cover;" preload="metadata" poster="images/${item.image_b}.png?v=${bust}"><source src="${videoPath}" type="video/mp4"></video>`;
-            thumbDiv.style.background = 'transparent';
-            index++;
-            // Wczytaj następny po krótkim opóźnieniu
-            setTimeout(loadNext, 100);
-          } else {
-            throw new Error('No video');
-          }
-        })
-        .catch(() => {
-          // Spróbuj PNG
-          const pngPath = `images/${item.image_b}.png?v=${bust}`;
-          fetch(pngPath, { method: 'HEAD' })
-            .then(res => {
-              if (res.ok) {
-                thumbDiv.innerHTML = `<img src="${pngPath}" alt="Miniatura" style="width:100%; height:100%; object-fit:cover;" />`;
-              } else {
-                throw new Error('No PNG');
-              }
-            })
-            .catch(() => {
-              // Spróbuj JPG
-              const jpgPath = `images/${item.image_b}.jpg?v=${bust}`;
-              thumbDiv.innerHTML = `<img src="${jpgPath}" alt="Miniatura" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'" />`;
-            })
-            .finally(() => {
-              thumbDiv.style.background = 'transparent';
-              index++;
-              setTimeout(loadNext, 100);
-            });
-        });
+      // UPROSZCZENIE: Zakładamy że item.image_b zawiera pełną nazwę pliku z Google Sheets (2a.mp4, 3a.png, 12b.jpg, etc.)
+      const filePath = `images/${item.image_b}?v=${bust}`;
+      const ext = item.image_b.split('.').pop().toLowerCase();
+      const isVideo = ['mp4', 'webm', 'mpg', 'mpeg'].includes(ext);
+
+      if (isVideo) {
+        // Wczytaj video
+        thumbDiv.innerHTML = `<video style="width:100%; height:100%; object-fit:cover;" preload="metadata"><source src="${filePath}" type="video/mp4"></video>`;
+        thumbDiv.style.background = 'transparent';
+      } else {
+        // Wczytaj obrazek
+        thumbDiv.innerHTML = `<img src="${filePath}" alt="Miniatura" style="width:100%; height:100%; object-fit:cover;" />`;
+        thumbDiv.style.background = 'transparent';
+      }
+
+      index++;
+      setTimeout(loadNext, 100);
     } else {
       index++;
       loadNext();
@@ -1881,44 +1833,39 @@ function openLightbox(imageName) {
   const lb = document.getElementById('lightbox');
   const lbImg = document.getElementById('lightbox-img');
 
-  // Najpierw spróbuj MP4
-  const videoPath = `images/${imageName}.mp4?v=${bust}`;
+  // UPROSZCZENIE: imageName zawiera już pełną nazwę pliku z Google Sheets (2a.mp4, 3a.png, 12b.jpg)
+  const filePath = `images/${imageName}?v=${bust}`;
+  const ext = imageName.split('.').pop().toLowerCase();
+  const isVideo = ['mp4', 'webm', 'mpg', 'mpeg'].includes(ext);
 
-  fetch(videoPath, { method: 'HEAD' })
-    .then(res => {
-      if (res.ok) {
-        // Wyświetl video
-        lbImg.style.display = 'none';
-        let video = lb.querySelector('video');
-        if (!video) {
-          video = document.createElement('video');
-          video.controls = true;
-          video.autoplay = true;
-          video.style.maxWidth = '90vw';
-          video.style.maxHeight = '85vh';
-          video.style.borderRadius = '12px';
-          video.style.boxShadow = '0 8px 40px rgba(0,0,0,0.6)';
-          video.style.objectFit = 'contain';
-          lb.querySelector('.lightbox-inner').appendChild(video);
-        }
-        video.src = videoPath;
-        video.style.display = 'block';
-        lb.classList.add('active');
-        document.body.style.overflow = 'hidden';
-      } else {
-        throw new Error('MP4 not found');
-      }
-    })
-    .catch(() => {
-      // Fallback na PNG/JPG
-      lbImg.style.display = 'block';
-      const video = lb.querySelector('video');
-      if (video) video.style.display = 'none';
-      lbImg.src = `images/${imageName}.png?v=${bust}`;
-      lbImg.onerror = () => { lbImg.src = `images/${imageName}.jpg?v=${bust}`; lbImg.onerror = null; };
-      lb.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    });
+  if (isVideo) {
+    // Wyświetl video
+    lbImg.style.display = 'none';
+    let video = lb.querySelector('video');
+    if (!video) {
+      video = document.createElement('video');
+      video.controls = true;
+      video.autoplay = true;
+      video.style.maxWidth = '90vw';
+      video.style.maxHeight = '85vh';
+      video.style.borderRadius = '12px';
+      video.style.boxShadow = '0 8px 40px rgba(0,0,0,0.6)';
+      video.style.objectFit = 'contain';
+      lb.querySelector('.lightbox-inner').appendChild(video);
+    }
+    video.src = filePath;
+    video.style.display = 'block';
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  } else {
+    // Wyświetl obrazek
+    lbImg.style.display = 'block';
+    const video = lb.querySelector('video');
+    if (video) video.style.display = 'none';
+    lbImg.src = filePath;
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function closeLightbox() {

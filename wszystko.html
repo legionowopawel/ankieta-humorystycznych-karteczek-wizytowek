@@ -255,12 +255,13 @@
   </div>
 
   <script>
-    const EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4'];
+      // Pobierz konfigurację z tego samego miejsca co app.js (Google Sheet URL i inne)
+      const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1oqmtR-K6JO10lFXcNjOltQxsQT1_F7nJ4_5lbSPBOaU/gviz/tq?tqx=out:json';
     const IMAGES_PATH = 'images/';
 
     async function loadGallery() {
       try {
-        const files = await discoverFiles();
+        const files = await fetchFilesFromSheet();
         
         if (files.length === 0) {
           showEmpty();
@@ -277,55 +278,31 @@
       }
     }
 
-    // Spróbuj pobrać listę plików
-    async function discoverFiles() {
+      // Pobierz listę plików z Google Sheets (kolumny D i F)
+      async function fetchFilesFromSheet() {
       const files = new Set();
 
-      // Metoda 1: Spróbuj API directory listing
       try {
-        const response = await fetch(IMAGES_PATH, { method: 'HEAD' });
-        if (response.ok) {
-          const text = await fetch(IMAGES_PATH).then(r => r.text());
-          // Szukaj linków z rozszerzeniami
-          const regex = /href=["']([^"']+\.(?:png|jpg|jpeg|webp|gif|mp4))/gi;
-          let match;
-          while ((match = regex.exec(text)) !== null) {
-            files.add(match[1]);
-          }
-        }
-      } catch (e) {
-        console.warn('Directory listing niedostępny, fallback na brute-force');
-      }
+        const response = await fetch(SHEET_URL);
+        if (!response.ok) throw new Error('API error');
 
-      // Metoda 2: Brute-force szczególne rozszerzenia
-      // Najpierw spróbuj znaleźć wszystkie potencjalne pliki
-      // Będziemy testować znane nazwy plikowych
-      if (files.size === 0) {
-        // Próbujesz znaleźć wszystkie pliki poprzez fetch HEAD
-        for (const ext of EXTENSIONS) {
-          // Szukaj plików z numerami 1a, 1b, 2a, 2b, itd, plus ogólne nazwy
-          const patterns = [];
-          
-          // Numery 1-20
-          for (let i = 1; i <= 20; i++) {
-            patterns.push(`${i}a.${ext}`, `${i}b.${ext}`);
-          }
-          
-          // Kilka innych potencjalnych nazw
-          patterns.push(`1.${ext}`, `welcome.${ext}`, `start.${ext}`);
+        const text = await response.text();
+        
+        // Parsing Google Visualization API response
+        const jsonMatch = text.match(/\[\[(.*?)\]\]/s);
+        if (jsonMatch) {
+          // Stłumaczenie formatu Google - to jest zgrabne jak wirus, ale działa
+          const dataStr = '[[' + jsonMatch[1] + ']]';
+          const data = JSON.parse(dataStr);
 
-          for (const filename of patterns) {
-            const url = `${IMAGES_PATH}${filename}?v=${Date.now()}`;
-            try {
-              const response = await fetch(url, { method: 'HEAD' });
-              if (response.ok) {
-                files.add(filename);
-              }
-            } catch (e) {
-              // Skip — plik nie istnieje
-            }
-          }
+          // Każdy wiersz: [id(0), rodzaj(1), pytanie(2), obrazek_a/d(3), odpowiedz(4), obrazek_b/f(5)]
+          data.forEach(row => {
+            if (row[3]) files.add(row[3]); // Kolumna D (image_a)
+            if (row[5]) files.add(row[5]); // Kolumna F (image_b)
+          });
         }
+      } catch (err) {
+        console.warn('Nie udało się pobrać danych z Google Sheets:', err.message);
       }
 
       return Array.from(files);
@@ -340,7 +317,7 @@
 
       files.forEach(filename => {
         const extension = filename.split('.').pop().toLowerCase();
-        const isVideo = ['mp4', 'webm', 'mov'].includes(extension);
+        const isVideo = ['mp4', 'webm', 'mpg', 'mpeg', 'mov'].includes(extension);
         
         const item = document.createElement('div');
         item.className = 'gallery-item';
