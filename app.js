@@ -213,6 +213,13 @@ async function startSurvey() {
     startBtn.textContent = "Ładuję pytania...";
   }
 
+  // 🎬 Stop welcome video when starting survey
+  const welcomeVideo = document.getElementById('welcome-video-element');
+  if (welcomeVideo) {
+    welcomeVideo.pause();
+    welcomeVideo.currentTime = 0;
+  }
+
   try {
     questions = await fetchQuestions();
     if (questions.length === 0) {
@@ -768,13 +775,9 @@ function loadImageWithFormat(imgEl, filePath, ext, imageWrap, screenType = 'a') 
 
       const video = document.createElement('video');
       video.src = filePath;
-      video.style.width = '100%';
-      video.style.height = 'auto';
-      video.style.maxHeight = '70vh';
-      video.style.borderRadius = '12px';
+      video.classList.add('survey-video');
       video.style.objectFit = 'contain';
       video.style.display = 'block';
-      video.style.margin = '0 auto';
 
       video.onerror = (err) => {
         console.error(`❌ Błąd ładowania video ${filePath}:`, err);
